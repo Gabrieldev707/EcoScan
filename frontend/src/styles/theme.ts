@@ -1,0 +1,24 @@
+export const colors = {
+  bg: '#07090a',
+  surface: '#0c1010',
+  surface2: '#112015',
+  green: '#1dff8a',
+  greenDim: '#0fcc6b',
+  lime: '#b8ff3c',
+  accent: '#00ffcc',
+  text: '#e8f5ee',
+  muted: '#4a6255',
+  dim: '#8a95a0',
+  border: 'rgba(29,255,138,0.12)',
+  borderStrong: 'rgba(29,255,138,0.3)',
+  error: '#ef4444',
+} as const;
+
+export const typography = {
+  display: "'Bebas Neue', sans-serif",
+  title: "'Syne', sans-serif",
+  body: "'Barlow', system-ui, sans-serif",
+  ui: "'DM Sans', system-ui, sans-serif",
+} as const;
+
+export type Color = keyof typeof colors;

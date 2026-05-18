@@ -1,0 +1,119 @@
+/* =========================================================
+   EcoScan — Global Styles
+   Display: Bebas Neue · UI: Barlow / DM Sans
+   ========================================================= */
+:root {
+  --bg: #07090a;
+  --surface: #0c1010;
+  --surface2: #112015;
+  --green: #1dff8a;
+  --green-dim: #0fcc6b;
+  --lime: #b8ff3c;
+  --accent: #00ffcc;
+  --text: #e8f5ee;
+  --muted: #4a6255;
+  --dim: #8a95a0;
+  --border: rgba(29, 255, 138, 0.12);
+  --border-strong: rgba(29, 255, 138, 0.3);
+  --glow: 0 0 32px rgba(29, 255, 138, 0.18);
+  --error: #ef4444;
+
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-title: 'Syne', sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-ui: 'DM Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+input, textarea { font-family: inherit; color: inherit; background: transparent; border: 0; outline: none; }
+img, svg, video { display: block; max-width: 100%; }
+
+::selection { background: var(--green); color: var(--bg); }
+
+/* ===== Custom Cursor ===== */
+.cursor {
+  position: fixed; top: 0; left: 0;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--green);
+  pointer-events: none; z-index: 9998;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+  transition: width .25s, height .25s;
+  will-change: transform;
+}
+.cursor.ring {
+  width: 38px; height: 38px;
+  background: transparent;
+  border: 1.5px solid rgba(29, 255, 138, 0.5);
+  opacity: 0.5;
+}
+.cursor.hover { width: 48px; height: 48px; background: var(--green); }
+
+/* ===== Scroll Progress ===== */
+.scroll-progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--green), var(--lime));
+  z-index: 9999;
+  transition: width 0.1s linear;
+}
+
+/* ===== Typography helpers ===== */
+.h-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 0.92;
+}
+.h-title { font-family: var(--font-title); font-weight: 700; }
+.h-title-xl { font-family: var(--font-title); font-weight: 800; }
+
+/* ===== Utility ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px; font-family: var(--font-ui);
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.pill-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes floatUp {
+  to { transform: translateY(-80vh) translateX(var(--dx, 0)); opacity: 0; }
+}
