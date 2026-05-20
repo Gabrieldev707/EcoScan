@@ -61,7 +61,9 @@ export function EcoButton({ label, onPress, loading = false, variant = 'primary'
 const styles = StyleSheet.create({
   btn: {
     backgroundColor: colors.green,
-    borderRadius: 12,
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: colors.green,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -72,10 +74,11 @@ const styles = StyleSheet.create({
     borderColor: colors.error,
   },
   label: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 16,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
     color: colors.bg,
-    letterSpacing: 0.2,
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
   },
   labelDanger: {
     color: colors.error,

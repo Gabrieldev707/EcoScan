@@ -1,15 +1,15 @@
 export const colors = {
   bg: '#07090a',
   surface: '#0c1010',
-  surface2: '#112015',
+  surface2: '#10171a',
   green: '#1dff8a',
   greenDim: '#0fcc6b',
   lime: '#b8ff3c',
   accent: '#00ffcc',
   text: '#e8f5ee',
   muted: '#4a6255',
-  dim: '#8a95a0',
+  dim: '#7a9387',
   border: 'rgba(29,255,138,0.12)',
-  borderStrong: 'rgba(29,255,138,0.3)',
+  borderStrong: 'rgba(29,255,138,0.35)',
   error: '#ef4444',
 } as const;

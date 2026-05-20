@@ -24,7 +24,8 @@
     },
     "plugins": [
       "expo-font",
-      "react-native-reanimated"
+      ["expo-camera", { "cameraPermission": "Precisamos da câmera para identificar resíduos." }],
+      ["expo-location", { "locationWhenInUsePermission": "Usamos sua localização para registrar onde o descarte foi feito." }]
     ]
   }
 }

@@ -1,17 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { useAppFonts } from './src/theme/fonts';
+import { fonts, useAppFonts } from './src/theme/fonts';
 import { AuthProvider } from './src/context/AuthContext';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { colors } from './src/theme/colors';
 
 export default function App() {
-  const [fontsLoaded] = useAppFonts();
+  const [fontsLoaded, fontError] = useAppFonts();
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (fontError) console.warn('Font error:', fontError);
+  }, [fontError]);
+
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={styles.splash}>
         <Text style={styles.splashText}>EcoScan</Text>
@@ -39,8 +43,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   splashText: {
+    fontFamily: fonts.display,
     fontSize: 28,
-    color: colors.green,
+    color: colors.text,
     letterSpacing: 2,
   },
 });

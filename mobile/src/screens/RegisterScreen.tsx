@@ -55,7 +55,7 @@ export function RegisterScreen({ navigation }: Props) {
     await new Promise(r => setTimeout(r, 900));
     await AsyncStorage.setItem('token', 'fake-token-ecoscan');
     setLoading(false);
-    navigation.replace('Profile', { name });
+    navigation.replace('App', { name });
   };
 
   return (
@@ -140,35 +140,41 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   logoText: {
-    fontFamily: fonts.titleBold,
-    fontSize: 32,
-    color: colors.green,
+    fontFamily: fonts.display,
+    fontSize: 38,
+    color: colors.text,
+    letterSpacing: 1.2,
   },
   sub: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
-    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.green,
+    letterSpacing: 2.1,
+    textTransform: 'uppercase',
     marginBottom: 40,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 24,
+    backgroundColor: 'rgba(29,255,138,0.04)',
+    borderRadius: 2,
+    padding: 28,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   title: {
-    fontFamily: fonts.titleBold,
-    fontSize: 28,
+    fontFamily: fonts.display,
+    fontSize: 56,
     color: colors.text,
-    marginBottom: 6,
-    lineHeight: 34,
+    marginBottom: 8,
+    lineHeight: 52,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
   },
   lead: {
     fontFamily: fonts.bodyLight,
     fontSize: 14,
-    color: colors.muted,
+    color: colors.dim,
     marginBottom: 28,
+    lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
@@ -177,12 +183,16 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 12,
     color: colors.muted,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   footerLink: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
     color: colors.green,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
 });

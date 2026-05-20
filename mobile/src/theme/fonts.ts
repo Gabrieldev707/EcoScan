@@ -1,28 +1,30 @@
 import {
   useFonts,
-  Syne_700Bold,
-  Syne_800ExtraBold,
-} from '@expo-google-fonts/syne';
+  BebasNeue_400Regular,
+} from '@expo-google-fonts/bebas-neue';
 import {
-  DMSans_300Light,
-  DMSans_400Regular,
-  DMSans_500Medium,
-} from '@expo-google-fonts/dm-sans';
+  Barlow_300Light,
+  Barlow_400Regular,
+  Barlow_500Medium,
+  Barlow_600SemiBold,
+} from '@expo-google-fonts/barlow';
 
 export function useAppFonts() {
   return useFonts({
-    Syne_700Bold,
-    Syne_800ExtraBold,
-    DMSans_300Light,
-    DMSans_400Regular,
-    DMSans_500Medium,
+    BebasNeue_400Regular,
+    Barlow_300Light,
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_600SemiBold,
   });
 }
 
 export const fonts = {
-  title: 'Syne_700Bold',
-  titleBold: 'Syne_800ExtraBold',
-  body: 'DMSans_400Regular',
-  bodyLight: 'DMSans_300Light',
-  bodyMedium: 'DMSans_500Medium',
+  display: 'BebasNeue_400Regular',
+  title: 'BebasNeue_400Regular',
+  titleBold: 'BebasNeue_400Regular',
+  body: 'Barlow_400Regular',
+  bodyLight: 'Barlow_300Light',
+  bodyMedium: 'Barlow_500Medium',
+  bodySemiBold: 'Barlow_600SemiBold',
 } as const;

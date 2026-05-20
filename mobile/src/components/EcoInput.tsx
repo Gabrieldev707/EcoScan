@@ -48,7 +48,7 @@ export function EcoInput({ label, icon, error, isPassword = false, value, onChan
   });
 
   const labelTop = labelAnim.interpolate({ inputRange: [0, 1], outputRange: [17, 6] });
-  const labelSize = labelAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 11] });
+  const labelSize = labelAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 10] });
   const labelColor = labelAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [colors.muted, colors.green],
@@ -96,10 +96,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    height: 60,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 16,
+    height: 62,
   },
   icon: {
     marginRight: 10,
@@ -110,7 +110,9 @@ const styles = StyleSheet.create({
   },
   label: {
     position: 'absolute',
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.bodyMedium,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     left: 0,
   },
   input: {
@@ -121,10 +123,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   error: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
     color: colors.error,
-    marginTop: 4,
+    marginTop: 5,
     marginLeft: 14,
+    letterSpacing: 0.5,
   },
 });

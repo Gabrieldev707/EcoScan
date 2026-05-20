@@ -10,15 +10,16 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
-import type { StackScreenProps } from '@react-navigation/stack';
-import type { AuthStackParamList } from '../navigation/AuthNavigator';
 import { ImpactCard } from '../components/ImpactCard';
 import { MedalCard } from '../components/MedalCard';
 import { EcoButton } from '../components/EcoButton';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 
-type Props = StackScreenProps<AuthStackParamList, 'Profile'>;
+type Props = {
+  route: { params: { name: string } };
+  onLogout?: () => void;
+};
 
 const MEDALS = [
   { title: 'Primeiro Scan', icon: 'camera' as const, earned: true },
@@ -28,9 +29,9 @@ const MEDALS = [
 ];
 
 const RECENT_SCANS = [
-  { icon: 'wine' as const, name: 'Garrafa PET — 600 ml', date: 'Hoje, 09:42', pts: '+12' },
-  { icon: 'file' as const, name: 'Caixa de papelão', date: 'Hoje, 08:11', pts: '+8' },
-  { icon: 'battery' as const, name: 'Pilha AA · 4 un', date: 'Ontem, 17:30', pts: '+30' },
+  { icon: 'package' as const, name: 'Garrafa PET — 600 ml', date: 'Hoje, 09:42', pts: '+12' },
+  { icon: 'file-text' as const, name: 'Caixa de papelão', date: 'Hoje, 08:11', pts: '+8' },
+  { icon: 'battery-charging' as const, name: 'Pilha AA · 4 un', date: 'Ontem, 17:30', pts: '+30' },
 ];
 
 function useEntryAnim(delay: number) {
@@ -47,7 +48,7 @@ function useEntryAnim(delay: number) {
   return { opacity, transform: [{ translateY }] };
 }
 
-export function ProfileScreen({ route, navigation }: Props) {
+export function ProfileScreen({ route, onLogout }: Props) {
   const { name } = route.params;
   const initials = name
     .split(' ')
@@ -63,7 +64,7 @@ export function ProfileScreen({ route, navigation }: Props) {
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    onLogout?.();
   };
 
   return (
@@ -162,45 +163,51 @@ const styles = StyleSheet.create({
   avatar: {
     width: 84,
     height: 84,
-    borderRadius: 42,
+    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   initials: {
-    fontFamily: fonts.titleBold,
-    fontSize: 32,
+    fontFamily: fonts.display,
+    fontSize: 42,
     color: colors.bg,
+    letterSpacing: 1,
   },
   userName: {
-    fontFamily: fonts.title,
-    fontSize: 24,
+    fontFamily: fonts.display,
+    fontSize: 44,
     color: colors.text,
     marginBottom: 10,
     textTransform: 'capitalize',
+    lineHeight: 46,
   },
   badge: {
     backgroundColor: 'rgba(29,255,138,0.12)',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
+    borderColor: colors.borderStrong,
+    borderRadius: 2,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   badgeText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 12,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
     color: colors.green,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
   },
   body: {
     padding: 20,
   },
   sectionTitle: {
-    fontFamily: fonts.title,
-    fontSize: 18,
+    fontFamily: fonts.display,
+    fontSize: 30,
     color: colors.text,
     marginBottom: 14,
     marginTop: 4,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -226,13 +233,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   seeAllText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
     color: colors.green,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
   },
   scanList: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 2,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -249,7 +258,7 @@ const styles = StyleSheet.create({
   scanIcon: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 2,
     backgroundColor: 'rgba(29,255,138,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -259,7 +268,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scanName: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     color: colors.text,
     marginBottom: 2,
@@ -270,9 +279,10 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   scanPts: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
+    fontFamily: fonts.display,
+    fontSize: 24,
     color: colors.green,
+    letterSpacing: 0.5,
   },
   logoutWrap: {
     marginBottom: 40,

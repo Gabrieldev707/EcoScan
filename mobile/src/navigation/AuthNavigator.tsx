@@ -2,12 +2,12 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
+import { AppNavigator } from './AppNavigator';
 
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  Profile: { name: string };
+  App: { name: string };
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();
@@ -23,7 +23,14 @@ export function AuthNavigator() {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="App">
+        {({ route, navigation }) => (
+          <AppNavigator
+            userName={route.params.name}
+            onLogout={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+          />
+        )}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }

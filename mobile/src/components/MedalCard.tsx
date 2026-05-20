@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   card: {
     width: 120,
     marginRight: 12,
-    borderRadius: 16,
+    borderRadius: 2,
     borderWidth: 1,
     padding: 16,
     alignItems: 'center',
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 2,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -52,11 +52,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,255,138,0.1)',
   },
   title: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
     color: colors.text,
     textAlign: 'center',
     lineHeight: 15,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   titleLocked: {
     color: colors.muted,
