@@ -1,104 +1,83 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ROUTES } from '@/utils/constants';
+import {
+  BarChart3,
+  BookOpen,
+  MapPin,
+  ScanLine,
+  Sparkles,
+  Trophy,
+  Users,
+  UsersRound,
+} from 'lucide-react';
+import { aboutFeatures, impactStats, personas } from '@/data/site';
 
-const STATS = [
-  { value: '12', suffix: '', label: 'Categorias de resíduos' },
-  { value: '98', suffix: '%', label: 'Precisão de identificação' },
-  { value: '500', suffix: 'm', label: 'Raio de pontos de coleta' },
-  { value: '2.840', suffix: '', label: 'EcoPoints no ranking' },
-];
-
-const TEAM = [
-  { name: 'Gabriel Azevedo', role: 'Fullstack · IA', scans: 312, pts: 2840 },
-];
-
-const FEATURES = [
-  { icon: '📷', title: 'Scan com IA', desc: 'Câmera aponta pro resíduo e a IA identifica a categoria em menos de 2 segundos.' },
-  { icon: '📍', title: 'Pontos de coleta', desc: 'Mapa em tempo real com os descartadores corretos a até 500m da sua posição.' },
-  { icon: '⭐', title: 'EcoPoints', desc: 'Cada descarte correto gera pontos convertíveis em descontos com parceiros.' },
-  { icon: '👥', title: 'Grupos', desc: 'Escolas e empresas criam grupos e medem o impacto coletivo em tempo real.' },
-];
+const featureIcons = [ScanLine, MapPin, Trophy, UsersRound, BarChart3, BookOpen];
 
 export default function About() {
-  useEffect(() => {
-    const els = document.querySelectorAll<HTMLElement>('.reveal');
-    const io = new IntersectionObserver(entries => {
-      entries.forEach((e, i) => {
-        if (e.isIntersecting) {
-          setTimeout(() => e.target.classList.add('in'), i * 60);
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.12 });
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-
   return (
-    <div className="about-page">
-      {/* Hero section */}
-      <section className="about-hero">
-        <div className="section-tag reveal"><span className="pill-dot" /> Sobre o projeto</div>
-        <h1 className="about-hero__title h-display reveal">
-          Tecnologia a serviço<br />do planeta.
-        </h1>
-        <p className="about-hero__sub reveal">
-          EcoScan nasceu em Campina Grande, PB, para resolver um problema simples: a maioria das pessoas quer reciclar,
-          mas não sabe <b>o quê</b> vai onde. A IA faz essa ponte.
-        </p>
-      </section>
+    <section id="about" className="section" data-screen-label="05 Sobre">
+      <div className="section-inner">
+        <div style={{ maxWidth: 880 }}>
+          <div className="section-tag reveal"><Sparkles size={12} /> Sobre o projeto</div>
+          <h2 className="section-title reveal">Reciclar não falta vontade — <em>falta clareza</em>.</h2>
+          <p className="section-sub reveal" style={{ maxWidth: 720 }}>
+            O Brasil gera mais de <b>80 milhões de toneladas</b> de resíduos sólidos por ano e recicla menos de <b>4%</b>.
+            O problema não é só estrutural, é cultural: as pessoas querem fazer certo, mas não sabem como.
+            O EcoScan resolve a dúvida no momento exato em que ela aparece.
+          </p>
+        </div>
 
-      {/* Stats */}
-      <section className="about-stats">
-        {STATS.map(s => (
-          <div key={s.label} className="about-stat reveal">
-            <div className="about-stat__num">{s.value}<span className="about-stat__suf">{s.suffix}</span></div>
-            <div className="about-stat__label">{s.label}</div>
-          </div>
-        ))}
-      </section>
+        <div className="feature-grid">
+          {aboutFeatures.map((feature, index) => {
+            const Icon = featureIcons[index];
+            return (
+              <div key={feature.title} className="feature reveal">
+                <div className="ico"><Icon size={24} /></div>
+                <h4>{feature.title}</h4>
+                <p>{feature.description}</p>
+                <span className="tag">{feature.tag}</span>
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Features grid */}
-      <section className="about-features">
-        <div className="section-tag reveal"><span className="pill-dot" /> Funcionalidades</div>
-        <h2 className="about-section-title h-display reveal">Como funciona</h2>
-        <div className="about-features__grid">
-          {FEATURES.map(f => (
-            <div key={f.title} className="about-feature reveal">
-              <div className="about-feature__icon">{f.icon}</div>
-              <h3 className="about-feature__title">{f.title}</h3>
-              <p className="about-feature__desc">{f.desc}</p>
+        <div className="impact-grid reveal">
+          {impactStats.map((stat) => (
+            <div key={stat.label} className="stat">
+              <div className="num">
+                {stat.value}
+                <span className="small">{stat.suffix}</span>
+              </div>
+              <div className="lab">{stat.label}</div>
+              <div className="src">{stat.source}</div>
             </div>
           ))}
         </div>
-      </section>
 
-      {/* Team */}
-      <section className="about-team">
-        <div className="section-tag reveal"><span className="pill-dot" /> Equipe</div>
-        <h2 className="about-section-title h-display reveal">Quem faz</h2>
-        <div className="about-team__grid">
-          {TEAM.map(m => (
-            <div key={m.name} className="about-team-card reveal">
-              <div className="about-team-card__avatar">{m.name.split(' ').map(w => w[0]).join('')}</div>
-              <div className="about-team-card__name">{m.name}</div>
-              <div className="about-team-card__role">{m.role}</div>
-              <div className="about-team-card__meta">
-                <span>{m.scans} scans</span>
-                <span>{m.pts.toLocaleString('pt-BR')} pts</span>
+        <div className="team-head">
+          <div className="section-tag reveal"><Users size={12} /> A equipe</div>
+          <h2 className="section-title reveal">Pessoas reais.<br /><em>Casos reais.</em></h2>
+          <p className="section-sub reveal">
+            Construído por estudantes da Unifacisa em torno de cinco personas — cada uma representa um motivo concreto pelo qual alguém abre o EcoScan pela primeira vez.
+          </p>
+        </div>
+
+        <div className="team-list">
+          {personas.map((persona) => (
+            <div key={persona.name} className="team reveal">
+              <div className="av-wrap"><div className="av">{persona.initials}</div></div>
+              <div className="info">
+                <div className="role">{persona.role}</div>
+                <div className="nm">{persona.name}</div>
+                <p className="desc">{persona.description}</p>
+              </div>
+              <div className="meta">
+                <div className="num">{persona.age}</div>
+                <div className="lab">Anos</div>
               </div>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* CTA */}
-      <section className="about-cta">
-        <h2 className="h-display reveal">Pronto para começar?</h2>
-        <p className="reveal">Crie sua conta gratuita e faça seu primeiro scan agora.</p>
-        <Link to={ROUTES.LOGIN} className="btn-primary reveal">Criar conta grátis</Link>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }

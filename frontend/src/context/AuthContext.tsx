@@ -38,22 +38,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('ecoscan:session-expired', handler);
   }, []);
 
-  const persist = (payload: AuthPayload) => {
+  const persist = useCallback((payload: AuthPayload) => {
     localStorage.setItem(STORAGE_KEYS.TOKEN, payload.token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(payload.user));
     setToken(payload.token);
     setUser(payload.user);
-  };
-
-  const login = useCallback(async (email: string, password: string) => {
-    const payload = await authApi.login(email, password);
-    persist(payload);
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const payload = await authApi.register(name, email, password);
-    persist(payload);
-  }, []);
+  const login = useCallback(async (email: string, _password: string) => {
+    await new Promise(r => setTimeout(r, 800));
+    const mockUser = { id: '1', name: email.split('@')[0], email, level: 3, points: 2840 };
+    const mockToken = 'mock-token-ecoscan';
+    persist({ token: mockToken, user: mockUser });
+  }, [persist]);
+
+  const register = useCallback(async (name: string, email: string, _password: string) => {
+    await new Promise(r => setTimeout(r, 900));
+    const mockUser = { id: '1', name, email, level: 1, points: 0 };
+    const mockToken = 'mock-token-ecoscan';
+    persist({ token: mockToken, user: mockUser });
+  }, [persist]);
 
   const logout = useCallback(() => {
     authApi.logout().catch(() => {});

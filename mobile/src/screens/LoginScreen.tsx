@@ -9,9 +9,9 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../navigation/AuthNavigator';
+import { useAuth } from '../hooks/useAuth';
 import { EcoInput } from '../components/EcoInput';
 import { EcoButton } from '../components/EcoButton';
 import { colors } from '../theme/colors';
@@ -20,6 +20,7 @@ import { fonts } from '../theme/fonts';
 type Props = StackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
+  const { loginMock } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -56,10 +57,9 @@ export function LoginScreen({ navigation }: Props) {
     }
     setLoading(true);
     await new Promise(r => setTimeout(r, 900));
-    await AsyncStorage.setItem('token', 'fake-token-ecoscan');
-    setLoading(false);
     const name = email.split('@')[0];
-    navigation.replace('App', { name });
+    await loginMock(name, email);
+    setLoading(false);
   };
 
   return (

@@ -1,342 +1,594 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import { ImpactCard } from '../components/ImpactCard';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 
-const metrics = [
-  { value: '147', label: 'Scans este mês', delta: '+18%', icon: 'camera' as const },
-  { value: '12,4 kg', label: 'Material reciclado', delta: '+24%', icon: 'refresh-cw' as const },
-  { value: '3,2 kg', label: 'CO₂ evitado', delta: '+9%', icon: 'wind' as const },
-  { value: '1.760', label: 'EcoPoints', delta: '+42%', icon: 'star' as const },
+// ─── mock data ───────────────────────────────────────────────────────────────
+
+const IMPACT_METRICS = [
+  { value: '47,3 kg', label: 'Descartados', icon: 'trash-2' as const },
+  { value: '12,8 kg', label: 'CO2 Evitado', icon: 'wind' as const },
+  { value: '340 L', label: 'Agua Poupada', icon: 'droplet' as const },
+  { value: '2.840', label: 'EcoPoints', icon: 'star' as const },
 ];
 
-const activity = [
-  { day: 'Seg', height: 99, scans: 18 },
-  { day: 'Ter', height: 130, scans: 24 },
-  { day: 'Qua', height: 65, scans: 12 },
-  { day: 'Qui', height: 166, scans: 31 },
-  { day: 'Sex', height: 148, scans: 28 },
-  { day: 'Sáb', height: 115, scans: 22 },
-  { day: 'Dom', height: 68, scans: 12 },
+const WEEKLY_BARS = [
+  { day: 'Seg', scans: 18 },
+  { day: 'Ter', scans: 24 },
+  { day: 'Qua', scans: 12 },
+  { day: 'Qui', scans: 31 },
+  { day: 'Sex', scans: 28 },
+  { day: 'Sab', scans: 22 },
+  { day: 'Dom', scans: 12 },
 ];
 
-const scans = [
-  { name: 'Garrafa PET - 600 ml', meta: 'Hoje, 09:42 - Lixeira amarela', points: '+12', icon: 'package' as const },
-  { name: 'Caixa de papelão', meta: 'Hoje, 08:11 - Lixeira azul', points: '+8', icon: 'file-text' as const },
-  { name: 'Pilha AA - 4 un', meta: 'Ontem, 17:30 - Ponto especial', points: '+30', icon: 'battery-charging' as const },
-  { name: 'Carregador celular', meta: 'Ontem, 14:05 - E-lixo', points: '+22', icon: 'cpu' as const },
+const MAX_SCANS = Math.max(...WEEKLY_BARS.map((b) => b.scans));
+const BAR_MAX_HEIGHT = 130;
+
+const GUIDE_CATEGORIES = [
+  {
+    name: 'Plastico',
+    color: '#ef4444',
+    accepted: ['Garrafas PET', 'Potes', 'Embalagens', 'Sacolas limpas'],
+    rejected: ['Plastico sujo', 'Isopor', 'Fita adesiva'],
+    tip: 'Esvazie e amasse antes de descartar na lixeira vermelha.',
+  },
+  {
+    name: 'Papel',
+    color: '#3b82f6',
+    accepted: ['Papelao', 'Revistas', 'Jornais', 'Caixas limpas'],
+    rejected: ['Papel engordurado', 'Papel higienico', 'Fotografias'],
+    tip: 'Mantenha seco e desdobre as caixas para economizar espaco.',
+  },
+  {
+    name: 'Metal',
+    color: '#eab308',
+    accepted: ['Latas de aluminio', 'Tampinhas', 'Ferragens', 'Fios'],
+    rejected: ['Latas com produto', 'Aerossol pressurizado', 'Tinta'],
+    tip: 'Amasse latas para reduzir volume antes do descarte.',
+  },
+  {
+    name: 'Vidro',
+    color: '#22c55e',
+    accepted: ['Garrafas', 'Frascos', 'Potes de conserva', 'Copos'],
+    rejected: ['Espelhos', 'Vidro temperado', 'Ceramica', 'Lampadas'],
+    tip: 'Embale vidros quebrados em jornal antes de descartar.',
+  },
+  {
+    name: 'Rejeito',
+    color: '#6b7280',
+    accepted: ['Fraldas', 'Papel higienico', 'Guardanapos usados'],
+    rejected: ['Nada e reciclavel aqui'],
+    tip: 'Descarte na lixeira cinza. Reduza ao maximo esse volume.',
+  },
 ];
 
-export function DashboardScreen() {
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function AnimatedBar({ scans, index }: { scans: number; index: number }) {
+  const height = useSharedValue(0);
+  const targetH = Math.round((scans / MAX_SCANS) * BAR_MAX_HEIGHT);
+
+  useEffect(() => {
+    height.value = withDelay(index * 60, withTiming(targetH, { duration: 600 }));
+  }, [height, targetH, index]);
+
+  const barStyle = useAnimatedStyle(() => ({ height: height.value }));
+
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <View style={styles.eyebrow}>
-          <Feather name="bar-chart-2" size={12} color={colors.green} />
-          <Text style={styles.eyebrowText}>Dashboard</Text>
-        </View>
-        <Text style={styles.title}>Seu progresso, tangível.</Text>
-        <Text style={styles.sub}>
-          Métricas em tempo real, histórico de scans e impacto coletivo em um painel direto para uso diário.
-        </Text>
-      </View>
-
-      <View style={styles.progressCard}>
-        <View style={styles.progressTop}>
-          <Text style={styles.progressLabel}>Nível 8 - Defensora</Text>
-          <Text style={styles.progressPts}>1.760<Text style={styles.progressDenom}> / 2.000</Text></Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
-        </View>
-      </View>
-
-      <View style={styles.metricGrid}>
-        {metrics.map((metric) => (
-          <View key={metric.label} style={styles.metric}>
-            <View style={styles.metricTop}>
-              <View style={styles.metricIcon}>
-                <Feather name={metric.icon} size={15} color={colors.green} />
-              </View>
-              <Text style={styles.metricDelta}>{metric.delta}</Text>
-            </View>
-            <Text style={styles.metricValue}>{metric.value}</Text>
-            <Text style={styles.metricLabel}>{metric.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.panel}>
-        <View style={styles.panelHead}>
-          <Text style={styles.panelTitle}>Atividade semanal</Text>
-          <Text style={styles.panelLink}>Semana</Text>
-        </View>
-        <View style={styles.chart}>
-          {activity.map((item) => (
-            <View key={item.day} style={styles.barWrap}>
-              <Text style={styles.barTip}>{item.scans}</Text>
-              <View style={[styles.bar, { height: item.height }]} />
-              <Text style={styles.barDay}>{item.day}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.panel}>
-        <View style={styles.panelHead}>
-          <Text style={styles.panelTitle}>Últimos scans</Text>
-          <Text style={styles.panelLink}>Ver tudo</Text>
-        </View>
-        {scans.map((scan) => (
-          <View key={scan.name} style={styles.scanRow}>
-            <View style={styles.scanIcon}>
-              <Feather name={scan.icon} size={15} color={colors.green} />
-            </View>
-            <View style={styles.scanBody}>
-              <Text style={styles.scanName}>{scan.name}</Text>
-              <Text style={styles.scanMeta}>{scan.meta}</Text>
-            </View>
-            <Text style={styles.scanPts}>{scan.points}</Text>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+    <View style={barStyles.wrap}>
+      <Text style={barStyles.tip}>{scans}</Text>
+      <Animated.View style={[barStyles.bar, barStyle]} />
+      <Text style={barStyles.day}>{WEEKLY_BARS[index].day}</Text>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
+const barStyles = StyleSheet.create({
+  wrap: {
     flex: 1,
-    backgroundColor: colors.surface,
-  },
-  content: {
-    paddingTop: 64,
-    paddingHorizontal: 20,
-    paddingBottom: 34,
-  },
-  header: {
-    marginBottom: 26,
-  },
-  eyebrow: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(29,255,138,0.04)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginBottom: 18,
-  },
-  eyebrowText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: colors.green,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 58,
-    lineHeight: 54,
-    color: colors.text,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  sub: {
-    marginTop: 12,
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.dim,
-  },
-  progressCard: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bg,
-    padding: 18,
-    marginBottom: 12,
-  },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 14,
-  },
-  progressLabel: {
-    flex: 1,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    color: colors.text,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  progressPts: {
-    fontFamily: fonts.display,
-    fontSize: 30,
-    color: colors.green,
-    lineHeight: 30,
-  },
-  progressDenom: {
-    fontSize: 17,
-    color: colors.dim,
-  },
-  progressTrack: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    width: '88%',
-    height: '100%',
-    backgroundColor: colors.green,
-  },
-  metricGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -5,
-    marginBottom: 2,
-  },
-  metric: {
-    width: '50%',
-    padding: 5,
-  },
-  metricTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  metricIcon: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'rgba(29,255,138,0.08)',
-  },
-  metricDelta: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: colors.green,
-    letterSpacing: 1,
-  },
-  metricValue: {
-    fontFamily: fonts.display,
-    fontSize: 42,
-    lineHeight: 42,
-    color: colors.text,
-    letterSpacing: 0.2,
-  },
-  metricLabel: {
-    marginTop: 6,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    lineHeight: 15,
-    color: colors.dim,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  panel: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bg,
-    padding: 18,
-    marginTop: 12,
-  },
-  panelHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  panelTitle: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    color: colors.text,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  panelLink: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: colors.green,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-  },
-  chart: {
-    height: 180,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 9,
-  },
-  barWrap: {
-    flex: 1,
-    height: '100%',
+    height: BAR_MAX_HEIGHT + 40,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 7,
+    gap: 6,
   },
-  barTip: {
+  tip: {
     fontFamily: fonts.display,
-    fontSize: 16,
+    fontSize: 14,
     color: colors.green,
+    lineHeight: 16,
   },
   bar: {
     width: '100%',
-    maxWidth: 28,
+    maxWidth: 26,
     backgroundColor: colors.green,
   },
-  barDay: {
+  day: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 9,
     color: colors.muted,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  scanRow: {
+});
+
+function AccordionItem({ item }: { item: (typeof GUIDE_CATEGORIES)[number] }) {
+  const [open, setOpen] = useState(false);
+  const height = useSharedValue(0);
+  const CONTENT_HEIGHT = 180;
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    height.value = withTiming(next ? CONTENT_HEIGHT : 0, { duration: 280 });
+  };
+
+  const bodyStyle = useAnimatedStyle(() => ({ height: height.value, overflow: 'hidden' }));
+
+  return (
+    <View style={accordionStyles.item}>
+      <Pressable style={accordionStyles.header} onPress={toggle}>
+        <View style={[accordionStyles.dot, { backgroundColor: item.color }]} />
+        <Text style={accordionStyles.name}>{item.name}</Text>
+        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
+      </Pressable>
+
+      <Animated.View style={bodyStyle}>
+        <View style={accordionStyles.body}>
+          <Text style={accordionStyles.sectionLabel}>Aceitos</Text>
+          <View style={accordionStyles.pills}>
+            {item.accepted.map((a) => (
+              <View key={a} style={accordionStyles.pillGreen}>
+                <Text style={accordionStyles.pillGreenText}>{a}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={accordionStyles.sectionLabel}>Nao aceitos</Text>
+          <View style={accordionStyles.pills}>
+            {item.rejected.map((r) => (
+              <View key={r} style={accordionStyles.pillRed}>
+                <Text style={accordionStyles.pillRedText}>{r}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={accordionStyles.tip}>{item.tip}</Text>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+const accordionStyles = StyleSheet.create({
+  item: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginBottom: 8,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 13,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    padding: 16,
   },
-  scanIcon: {
-    width: 38,
-    height: 38,
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  name: {
+    flex: 1,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  body: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
+  },
+  sectionLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 9,
+    color: colors.muted,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  pillGreen: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(29,255,138,0.08)',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  pillGreenText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.green,
+    letterSpacing: 0.8,
+  },
+  pillRed: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+  },
+  pillRedText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.error,
+    letterSpacing: 0.8,
+  },
+  tip: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+});
+
+// ─── animated progress bar ────────────────────────────────────────────────────
+
+function ProgressBar() {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withDelay(200, withTiming(0.84, { duration: 900 }));
+  }, [width]);
+
+  const barStyle = useAnimatedStyle(() => ({ width: `${width.value * 100}%` as unknown as number }));
+
+  return (
+    <View style={progressStyles.track}>
+      <Animated.View style={[progressStyles.fill, barStyle]} />
+    </View>
+  );
+}
+
+const progressStyles = StyleSheet.create({
+  track: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  fill: {
+    height: '100%',
+    backgroundColor: colors.green,
+  },
+});
+
+// ─── main screen ─────────────────────────────────────────────────────────────
+
+type Tab = 'impacto' | 'guia';
+
+export function DashboardScreen() {
+  const [activeTab, setActiveTab] = useState<Tab>('impacto');
+  const impactoOpacity = useSharedValue(1);
+  const guiaOpacity = useSharedValue(0);
+
+  const switchTab = (tab: Tab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    if (tab === 'impacto') {
+      guiaOpacity.value = withTiming(0, { duration: 180 });
+      impactoOpacity.value = withTiming(1, { duration: 180 });
+    } else {
+      impactoOpacity.value = withTiming(0, { duration: 180 });
+      guiaOpacity.value = withTiming(1, { duration: 180 });
+    }
+  };
+
+  const impactoStyle = useAnimatedStyle(() => ({ opacity: impactoOpacity.value }));
+  const guiaStyle = useAnimatedStyle(() => ({ opacity: guiaOpacity.value }));
+
+  return (
+    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Ola, Gabriel</Text>
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelText}>Nivel 8</Text>
+        </View>
+      </View>
+
+      {/* Progress bar */}
+      <View style={styles.progressCard}>
+        <View style={styles.progressTop}>
+          <Text style={styles.progressLabel}>2.840 / 3.000 pts</Text>
+          <Text style={styles.progressSub}>Proximo nivel: Especialista</Text>
+        </View>
+        <ProgressBar />
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <Pressable
+          style={[styles.tabBtn, activeTab === 'impacto' && styles.tabBtnActive]}
+          onPress={() => switchTab('impacto')}
+        >
+          <Text style={[styles.tabText, activeTab === 'impacto' && styles.tabTextActive]}>
+            Impacto
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tabBtn, activeTab === 'guia' && styles.tabBtnActive]}
+          onPress={() => switchTab('guia')}
+        >
+          <Text style={[styles.tabText, activeTab === 'guia' && styles.tabTextActive]}>
+            Guia
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Tab 1 — Impacto */}
+      {activeTab === 'impacto' && (
+        <Animated.View style={impactoStyle}>
+          {/* 2x2 metric grid */}
+          <View style={styles.metricGrid}>
+            {IMPACT_METRICS.map((m) => (
+              <View key={m.label} style={styles.metricCell}>
+                <ImpactCard value={m.value} label={m.label} icon={m.icon} />
+              </View>
+            ))}
+          </View>
+
+          {/* Weekly chart */}
+          <View style={styles.panel}>
+            <View style={styles.panelHead}>
+              <Text style={styles.panelTitle}>Atividade semanal</Text>
+              <Text style={styles.panelSub}>Semana</Text>
+            </View>
+            <View style={styles.chart}>
+              {WEEKLY_BARS.map((bar, i) => (
+                <AnimatedBar key={bar.day} scans={bar.scans} index={i} />
+              ))}
+            </View>
+          </View>
+
+          {/* Streak card */}
+          <View style={styles.streakCard}>
+            <View style={styles.streakIcon}>
+              <Feather name="zap" size={20} color={colors.green} />
+            </View>
+            <View style={styles.streakBody}>
+              <Text style={styles.streakLabel}>Sequencia ativa</Text>
+              <Text style={styles.streakValue}>12 dias consecutivos</Text>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Tab 2 — Guia */}
+      {activeTab === 'guia' && (
+        <Animated.View style={guiaStyle}>
+          <Text style={styles.guiaIntro}>
+            Saiba como preparar cada tipo de residuo para o descarte correto.
+          </Text>
+          {GUIDE_CATEGORIES.map((cat) => (
+            <AccordionItem key={cat.name} item={cat} />
+          ))}
+        </Animated.View>
+      )}
+    </ScrollView>
+  );
+}
+
+// ─── styles ──────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  content: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+
+  // header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  greeting: {
+    fontFamily: fonts.display,
+    fontSize: 36,
+    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  levelBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(29,255,138,0.1)',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  levelText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.green,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+
+  // progress
+  progressCard: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'rgba(29,255,138,0.08)',
+    backgroundColor: colors.surface,
+    padding: 16,
+    marginBottom: 20,
   },
-  scanBody: {
-    flex: 1,
-    minWidth: 0,
+  progressTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  scanName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.text,
+  progressLabel: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.green,
+    letterSpacing: 0.4,
   },
-  scanMeta: {
-    marginTop: 3,
+  progressSub: {
     fontFamily: fonts.bodyMedium,
     fontSize: 10,
     color: colors.muted,
-    letterSpacing: 0.9,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  scanPts: {
-    fontFamily: fonts.display,
-    fontSize: 24,
+
+  // tabs
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  tabBtnActive: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.green,
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: colors.muted,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  tabTextActive: {
     color: colors.green,
+  },
+
+  // impacto tab
+  metricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -5,
+    marginBottom: 8,
+  },
+  metricCell: {
+    width: '50%',
+    padding: 5,
+  },
+
+  // chart
+  panel: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  panelHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  panelTitle: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.text,
+    textTransform: 'uppercase',
     letterSpacing: 0.4,
+  },
+  panelSub: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.green,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  chart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    height: BAR_MAX_HEIGHT + 40,
+  },
+
+  // streak
+  streakCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: 'rgba(29,255,138,0.04)',
+    padding: 16,
+  },
+  streakIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(29,255,138,0.1)',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  streakBody: {
+    gap: 2,
+  },
+  streakLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.muted,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  streakValue: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    color: colors.text,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+
+  // guia tab
+  guiaIntro: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 13,
+    color: colors.dim,
+    lineHeight: 20,
+    marginBottom: 16,
   },
 });

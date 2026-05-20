@@ -11,6 +11,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  loginMock: (name: string, email: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,8 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const loginMock = useCallback(async (name: string, email: string) => {
+    const mockUser = { id: '1', name, email, level: 8, points: 2840 };
+    await persist({ token: 'mock-token-ecoscan', user: mockUser });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, loginMock }}>
       {children}
     </AuthContext.Provider>
   );

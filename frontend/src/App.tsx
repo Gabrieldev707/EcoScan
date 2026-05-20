@@ -1,123 +1,118 @@
-import React, { useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { AuthProvider } from '@/context/AuthContext';
-import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components/Navbar';
-import { Loading } from '@/components/Loading';
-import { ROUTES } from '@/utils/constants';
+import Footer from '@/components/Footer';
+import Guide from '@/pages/Guide';
 import Hero from '@/pages/Hero';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import About from '@/pages/About';
 import '@/styles/globals.css';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return <Loading fullScreen />;
-  if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
-  return <>{children}</>;
-}
-
-function CustomCursor() {
-  const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const dot = dotRef.current;
-    const ring = ringRef.current;
-    if (!dot || !ring || matchMedia('(hover: none)').matches) return;
-
-    let mx = innerWidth / 2, my = innerHeight / 2;
-    let dx = mx, dy = my, rx = mx, ry = my;
-
-    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
-    window.addEventListener('mousemove', onMove);
-
-    let rafId: number;
-    const tick = () => {
-      dx += (mx - dx) * 0.35; dy += (my - dy) * 0.35;
-      rx += (mx - rx) * 0.14; ry += (my - ry) * 0.14;
-      dot.style.transform = `translate(${dx}px,${dy}px) translate(-50%,-50%)`;
-      ring.style.transform = `translate(${rx}px,${ry}px) translate(-50%,-50%)`;
-      rafId = requestAnimationFrame(tick);
-    };
-    tick();
-
-    const setHover = (h: boolean) => {
-      dot.classList.toggle('hover', h);
-      ring.style.opacity = h ? '0' : '0.5';
-    };
-    const onOver = (e: MouseEvent) => { if ((e.target as Element).closest('a,button,input')) setHover(true); };
-    const onOut = (e: MouseEvent) => { if ((e.target as Element).closest('a,button,input')) setHover(false); };
-    document.addEventListener('mouseover', onOver);
-    document.addEventListener('mouseout', onOut);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseover', onOver);
-      document.removeEventListener('mouseout', onOut);
-    };
-  }, []);
-
-  return (
-    <>
-      <div ref={dotRef} className="cursor" />
-      <div ref={ringRef} className="cursor ring" />
-    </>
-  );
-}
-
 function ScrollProgress() {
   const barRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
+
     const onScroll = () => {
-      const h = document.documentElement;
-      const max = h.scrollHeight - h.clientHeight;
-      bar.style.width = (max > 0 ? window.scrollY / max * 100 : 0) + '%';
+      const root = document.documentElement;
+      const max = root.scrollHeight - root.clientHeight;
+      bar.style.width = `${max > 0 ? (window.scrollY / max) * 100 : 0}%`;
     };
+
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
   return <div ref={barRef} className="scroll-progress" />;
 }
 
-function RevealOnRoute() {
-  const { pathname } = useLocation();
+function RevealObserver() {
   useEffect(() => {
-    window.scrollTo(0, 0);
-    // Re-trigger .reveal on route change
-    document.querySelectorAll('.reveal').forEach(el => el.classList.remove('in'));
-  }, [pathname]);
+    const elements = document.querySelectorAll<HTMLElement>('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      elements.forEach((element) => element.classList.add('in'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const siblings = [...(entry.target.parentElement?.children ?? [])];
+          const index = siblings.indexOf(entry.target);
+          const delay = Math.max(0, index % 6) * 60;
+          window.setTimeout(() => entry.target.classList.add('in'), delay);
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' },
+    );
+
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, []);
+
+  return null;
+}
+
+function MagneticNavCta() {
+  useEffect(() => {
+    const button = document.querySelector<HTMLElement>('.nav-cta');
+    if (!button || matchMedia('(hover: none)').matches) return;
+
+    let rect = button.getBoundingClientRect();
+    const measure = () => {
+      rect = button.getBoundingClientRect();
+    };
+
+    const onMove = (event: MouseEvent) => {
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      gsap.to(button, {
+        x: (event.clientX - centerX) * 0.22,
+        y: (event.clientY - centerY) * 0.3,
+        duration: 0.35,
+        ease: 'power3.out',
+      });
+    };
+
+    const onLeave = () => {
+      gsap.to(button, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1, 0.4)' });
+    };
+
+    window.addEventListener('resize', measure);
+    button.addEventListener('mousemove', onMove);
+    button.addEventListener('mouseleave', onLeave);
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      button.removeEventListener('mousemove', onMove);
+      button.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
   return null;
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CustomCursor />
-        <ScrollProgress />
-        <Navbar />
-        <RevealOnRoute />
-        <Routes>
-          <Route path={ROUTES.HOME} element={<Hero />} />
-          <Route path={ROUTES.LOGIN} element={<Login />} />
-          <Route path={ROUTES.ABOUT} element={<About />} />
-          <Route
-            path={ROUTES.DASHBOARD}
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+    <>
+      <ScrollProgress />
+      <RevealObserver />
+      <MagneticNavCta />
+      <Navbar />
+      <main>
+        <Hero />
+        <Login />
+        <Dashboard />
+        <Guide />
+        <About />
+      </main>
+      <Footer />
+    </>
   );
 }

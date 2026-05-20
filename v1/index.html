@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoScan — Identificação Inteligente de Resíduos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+  <!-- ============ NAVBAR ============ -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#hero" class="brand"><span class="dot"></span>EcoScan</a>
+      <div class="nav-links">
+        <a href="#hero">Início</a>
+        <a href="#login">Acesso</a>
+        <a href="#dashboard">App</a>
+        <a href="#about">Sobre</a>
+      </div>
+      <a href="#login" class="nav-cta">Entrar</a>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <section id="hero" class="hero-wrap" data-screen-label="01 Hero">
+    <div class="hero">
+      <video id="heroVideo" src="hero-video.mp4" muted playsinline preload="auto"></video>
+      <div class="overlay"></div>
+      <div class="grain"></div>
+
+      <div class="hero-content">
+        <div class="hero-eyebrow" id="heroEyebrow"><span class="pill-dot"></span> Identificação inteligente de resíduos</div>
+        <h1 class="hero-title" id="heroTitle"></h1>
+        <p class="hero-sub" id="heroSub">Aponte a câmera. Descubra a destinação correta em segundos. Transforme cada descarte em pontos e impacto coletivo mensurável.</p>
+        <div class="hero-cta-row" id="heroCta">
+          <a href="#login" class="btn-primary" id="magneticBtn">
+            <i data-lucide="scan-line"></i> Começar agora
+          </a>
+          <a href="#about" class="btn-ghost">
+            <i data-lucide="play"></i> Ver projeto
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-badges" id="heroBadges">
+        <div class="hero-badge"><i data-lucide="recycle"></i> 12 categorias reconhecidas</div>
+        <div class="hero-badge"><i data-lucide="map-pin"></i> Pontos de coleta a 500m</div>
+        <div class="hero-badge"><i data-lucide="users"></i> Impacto coletivo em tempo real</div>
+      </div>
+
+      <div class="scroll-hint"><span class="line"></span>Role</div>
+    </div>
+  </section>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="login" class="section" data-screen-label="02 Login">
+    <div class="section-inner login-grid">
+      <div class="login-info">
+        <div class="section-tag"><i data-lucide="lock" style="width:12px;height:12px"></i> Acesso seguro</div>
+        <h2 class="section-title">Sua conta no <em>EcoScan</em>.<br/>Seu impacto, mensurável.</h2>
+        <p class="section-sub">Entre para acompanhar seus scans, escalar no ranking da sua cidade e visualizar a quantidade de material que você desviou do aterro este mês.</p>
+
+        <div class="feature-row">
+          <i data-lucide="shield-check"></i>
+          <div>
+            <div class="ft-title">Privacidade por padrão</div>
+            <div class="ft-desc">Imagens processadas no dispositivo. Nada é armazenado sem permissão explícita.</div>
+          </div>
+        </div>
+        <div class="feature-row">
+          <i data-lucide="trophy"></i>
+          <div>
+            <div class="ft-title">Pontuação que importa</div>
+            <div class="ft-desc">Cada descarte correto vira EcoPoints — convertíveis em descontos com parceiros locais.</div>
+          </div>
+        </div>
+        <div class="feature-row">
+          <i data-lucide="users-round"></i>
+          <div>
+            <div class="ft-title">Grupos colaborativos</div>
+            <div class="ft-desc">Escolas, empresas e bairros podem criar grupos e medir impacto coletivo.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="login-card-wrap">
+        <div class="login-card" id="loginCard">
+          <div class="blob a"></div>
+          <div class="blob b"></div>
+          <h3>Bem-vindo de volta</h3>
+          <p class="lead">Entre com sua conta para continuar reciclando.</p>
+
+          <form id="loginForm" novalidate>
+            <div class="field">
+              <input type="email" id="email" placeholder=" " autocomplete="email" />
+              <label for="email">E-mail</label>
+              <i data-lucide="mail" class="icon"></i>
+            </div>
+            <div class="field">
+              <input type="password" id="password" placeholder=" " autocomplete="current-password" />
+              <label for="password">Senha</label>
+              <i data-lucide="lock" class="icon"></i>
+            </div>
+
+            <div class="row-helpers">
+              <label><input type="checkbox" checked /> Manter conectado</label>
+              <a href="#">Esqueci a senha</a>
+            </div>
+
+            <button type="submit" class="submit" id="submitBtn">
+              <span>Entrar</span> <i data-lucide="arrow-right" style="width:16px;height:16px"></i>
+            </button>
+
+            <div class="divider">ou continue com</div>
+            <div class="oauth">
+              <button type="button"><i data-lucide="globe" style="width:16px;height:16px"></i> Google</button>
+              <button type="button"><i data-lucide="apple" style="width:16px;height:16px"></i> Apple</button>
+            </div>
+
+            <p class="signup-line">Não tem conta? <a href="#">Cadastre-se grátis</a></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="dashboard" data-screen-label="03 Dashboard">
+    <div class="dash-wrap">
+      <div style="margin-bottom: 40px; max-width: 720px;">
+        <div class="section-tag"><i data-lucide="layout-dashboard" style="width:12px;height:12px"></i> Dashboard</div>
+        <h2 class="section-title">Seu progresso, <em>tangível</em>.</h2>
+        <p class="section-sub">Métricas em tempo real, histórico de scans e o impacto da sua rede — tudo num só painel pensado para gerar consistência, não culpa.</p>
+      </div>
+
+      <div class="dash-frame">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <div class="sb-brand"><span class="dot"></span>EcoScan</div>
+          <div class="sb-section">
+            <div class="sb-label">Menu</div>
+            <div class="sb-item active"><i data-lucide="layout-dashboard"></i> Painel</div>
+            <div class="sb-item"><i data-lucide="scan-line"></i> Escanear</div>
+            <div class="sb-item"><i data-lucide="map"></i> Pontos de coleta</div>
+            <div class="sb-item"><i data-lucide="bar-chart-3"></i> Estatísticas</div>
+            <div class="sb-item"><i data-lucide="trophy"></i> Conquistas</div>
+          </div>
+          <div class="sb-section">
+            <div class="sb-label">Comunidade</div>
+            <div class="sb-item"><i data-lucide="users"></i> Meu grupo</div>
+            <div class="sb-item"><i data-lucide="globe"></i> Ranking</div>
+            <div class="sb-item"><i data-lucide="gift"></i> Recompensas</div>
+          </div>
+          <div class="sb-foot">
+            <div class="avatar">JS</div>
+            <div>
+              <div style="color:var(--text)">Júlia Santos</div>
+              <div style="font-size:11px">Configurações</div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main -->
+        <div class="main">
+          <div class="main-head">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input placeholder="Buscar resíduo, ponto de coleta…" />
+            </div>
+            <div class="head-right">
+              <button class="icon-btn"><i data-lucide="bell"></i><span class="badge">3</span></button>
+              <button class="icon-btn"><i data-lucide="settings"></i></button>
+              <div class="user-chip">
+                <div class="avatar">JS</div>
+                <div>
+                  <div class="nm">Júlia Santos</div>
+                  <div class="lvl">Nível 7 · Guardiã</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="greet">
+            <div>
+              <h2>Olá, Júlia.</h2>
+              <p>Você está a 240 pontos de subir para o Nível 8.</p>
+            </div>
+            <div class="level-pill"><i data-lucide="flame" style="width:14px;height:14px"></i> Sequência de 12 dias</div>
+          </div>
+
+          <div class="progress-card">
+            <div class="progress-row">
+              <div class="lbl">Progresso para <b>Nível 8 — Defensora</b></div>
+              <div class="pts">1.760 / 2.000</div>
+            </div>
+            <div class="bar"><div class="fill" data-target="88%"></div></div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="top"><div class="ico"><i data-lucide="scan-line"></i></div><div class="delta"><i data-lucide="trending-up" style="width:12px;height:12px"></i> +18%</div></div>
+              <div class="num">147</div>
+              <div class="lab">Scans este mês</div>
+            </div>
+            <div class="metric">
+              <div class="top"><div class="ico"><i data-lucide="recycle"></i></div><div class="delta"><i data-lucide="trending-up" style="width:12px;height:12px"></i> +24%</div></div>
+              <div class="num">12,4 kg</div>
+              <div class="lab">Material reciclado</div>
+            </div>
+            <div class="metric">
+              <div class="top"><div class="ico"><i data-lucide="leaf"></i></div><div class="delta"><i data-lucide="trending-up" style="width:12px;height:12px"></i> +9%</div></div>
+              <div class="num">3,2 kg</div>
+              <div class="lab">CO₂ evitado</div>
+            </div>
+            <div class="metric">
+              <div class="top"><div class="ico"><i data-lucide="coins"></i></div><div class="delta"><i data-lucide="trending-up" style="width:12px;height:12px"></i> +42%</div></div>
+              <div class="num">1.760</div>
+              <div class="lab">EcoPoints acumulados</div>
+            </div>
+          </div>
+
+          <div class="lower">
+            <div class="chart-card">
+              <div class="card-head">
+                <h4>Atividade semanal</h4>
+                <div class="seg">
+                  <button class="on">Semana</button>
+                  <button>Mês</button>
+                  <button>Ano</button>
+                </div>
+              </div>
+              <div class="chart" id="chart">
+                <div class="bar-wrap"><span class="v">18</span><div class="b" data-h="55%"></div><span class="d">Seg</span></div>
+                <div class="bar-wrap"><span class="v">24</span><div class="b" data-h="72%"></div><span class="d">Ter</span></div>
+                <div class="bar-wrap"><span class="v">12</span><div class="b" data-h="36%"></div><span class="d">Qua</span></div>
+                <div class="bar-wrap"><span class="v">31</span><div class="b" data-h="92%"></div><span class="d">Qui</span></div>
+                <div class="bar-wrap"><span class="v">28</span><div class="b" data-h="82%"></div><span class="d">Sex</span></div>
+                <div class="bar-wrap"><span class="v">22</span><div class="b" data-h="64%"></div><span class="d">Sáb</span></div>
+                <div class="bar-wrap"><span class="v">12</span><div class="b" data-h="38%"></div><span class="d">Dom</span></div>
+              </div>
+            </div>
+
+            <div class="list-card">
+              <div class="card-head"><h4>Últimos scans</h4><a href="#" style="font-size:12px; color:var(--lime)">Ver tudo</a></div>
+              <div class="scan-list">
+                <div class="scan">
+                  <div class="cat"><i data-lucide="wine"></i></div>
+                  <div class="body"><div class="nm">Garrafa PET — 600 ml</div><div class="meta">Hoje, 09:42 · Lixeira amarela</div></div>
+                  <div class="pts">+12</div>
+                </div>
+                <div class="scan">
+                  <div class="cat pap"><i data-lucide="newspaper"></i></div>
+                  <div class="body"><div class="nm">Caixa de papelão</div><div class="meta">Hoje, 08:11 · Lixeira azul</div></div>
+                  <div class="pts">+8</div>
+                </div>
+                <div class="scan">
+                  <div class="cat met"><i data-lucide="battery-warning"></i></div>
+                  <div class="body"><div class="nm">Pilha AA · 4 un</div><div class="meta">Ontem, 17:30 · Ponto especial</div></div>
+                  <div class="pts">+30</div>
+                </div>
+                <div class="scan">
+                  <div class="cat eco"><i data-lucide="cpu"></i></div>
+                  <div class="body"><div class="nm">Carregador de celular</div><div class="meta">Ontem, 14:05 · E-lixo</div></div>
+                  <div class="pts">+22</div>
+                </div>
+                <div class="scan">
+                  <div class="cat org"><i data-lucide="apple"></i></div>
+                  <div class="body"><div class="nm">Resto orgânico — 1,2 kg</div><div class="meta">19/04, 19:20 · Compostagem</div></div>
+                  <div class="pts">+6</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SOBRE / EQUIPE ============ -->
+  <section id="about" class="section" data-screen-label="04 Sobre">
+    <div class="section-inner">
+      <div style="max-width: 760px;">
+        <div class="section-tag"><i data-lucide="sparkles" style="width:12px;height:12px"></i> Sobre o projeto</div>
+        <h2 class="section-title">Reciclar não falta vontade — <em>falta clareza</em>.</h2>
+        <p class="section-sub">O Brasil gera mais de 80 milhões de toneladas de resíduos sólidos por ano e recicla menos de 4%. O problema não é só estrutural, é cultural: as pessoas querem fazer certo, mas não sabem como. O EcoScan resolve a dúvida no momento exato em que ela aparece.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="scan-line"></i></div>
+          <h4>Câmera que reconhece</h4>
+          <p>Aponte para qualquer resíduo. A IA identifica o material, a categoria e a destinação correta em segundos.</p>
+          <span class="tag">Visão computacional</span>
+        </div>
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="map-pin"></i></div>
+          <h4>Mapa de descarte</h4>
+          <p>Pontos de coleta a até 500 m, com horário, tipo de material aceito e rota até o local.</p>
+          <span class="tag">Geolocalização</span>
+        </div>
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="trophy"></i></div>
+          <h4>Gamificação real</h4>
+          <p>EcoPoints, conquistas e ranking. Hábito virtuoso vira algo que você quer fazer todo dia.</p>
+          <span class="tag">Engajamento</span>
+        </div>
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="users-round"></i></div>
+          <h4>Grupos colaborativos</h4>
+          <p>Escolas, empresas e turmas criam grupos e medem o impacto coletivo em tempo real.</p>
+          <span class="tag">Comunidade</span>
+        </div>
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="bar-chart-3"></i></div>
+          <h4>Relatórios ESG</h4>
+          <p>Empresas exportam relatórios mensais de redução de pegada de carbono prontos para auditoria.</p>
+          <span class="tag">Para empresas</span>
+        </div>
+        <div class="feature anim">
+          <div class="ico"><i data-lucide="book-open"></i></div>
+          <h4>Educação contextual</h4>
+          <p>Cada scan vem com uma micro-lição sobre por que aquele material precisa daquela destinação.</p>
+          <span class="tag">Aprendizado</span>
+        </div>
+      </div>
+
+      <div class="impact-grid">
+        <div class="stat anim">
+          <div class="num">80 mi</div>
+          <div class="lab">Toneladas de resíduos sólidos geradas anualmente no Brasil.</div>
+          <div class="src">— ABRELPE, 2024</div>
+        </div>
+        <div class="stat anim">
+          <div class="num">&lt;4%</div>
+          <div class="lab">Do total reciclado de fato — o restante vai para aterro ou lixão.</div>
+          <div class="src">— SNIS, 2023</div>
+        </div>
+        <div class="stat anim">
+          <div class="num">76%</div>
+          <div class="lab">Dos brasileiros declaram querer reciclar, mas não sabem como começar.</div>
+          <div class="src">— Pesquisa Akatu, 2023</div>
+        </div>
+        <div class="stat anim">
+          <div class="num">12x</div>
+          <div class="lab">Mais engajamento em comunidades que adotam apps de gamificação ambiental.</div>
+          <div class="src">— Behavioral Insights, 2022</div>
+        </div>
+      </div>
+
+      <div class="team-head">
+        <div class="left">
+          <div class="section-tag"><i data-lucide="users" style="width:12px;height:12px"></i> A equipe</div>
+          <h2 class="section-title">Pessoas reais, <em>casos de uso reais</em>.</h2>
+          <p class="section-sub">Construído por estudantes da Unifacisa em torno de cinco personas — cada uma representa um motivo concreto pelo qual alguém abre o app pela primeira vez.</p>
+        </div>
+      </div>
+
+      <div class="team-grid">
+        <div class="team anim">
+          <div class="av">AM</div>
+          <div class="nm">Ana Moreira</div>
+          <div class="role">Estudante · Escola</div>
+          <p class="desc">Usa o EcoScan na aula de ciências, com a turma toda competindo num ranking de bairro.</p>
+        </div>
+        <div class="team anim">
+          <div class="av">RS</div>
+          <div class="nm">Rafael Sousa</div>
+          <div class="role">Síndico · Condomínio</div>
+          <p class="desc">Cria grupo do prédio e gera relatório mensal de quanto material foi desviado do aterro.</p>
+        </div>
+        <div class="team anim">
+          <div class="av">LC</div>
+          <div class="nm">Luiza Costa</div>
+          <div class="role">Gestora ESG · Empresa</div>
+          <p class="desc">Mede pegada de carbono dos colaboradores e converte EcoPoints em benefícios internos.</p>
+        </div>
+        <div class="team anim">
+          <div class="av">MO</div>
+          <div class="nm">Marcos Oliveira</div>
+          <div class="role">Catador · Cooperativa</div>
+          <p class="desc">Recebe alertas dos pontos onde foi solicitada coleta, otimizando a rota diária.</p>
+        </div>
+        <div class="team anim">
+          <div class="av">CB</div>
+          <div class="nm">Clara Bento</div>
+          <div class="role">Professora · Pesquisa</div>
+          <p class="desc">Usa os dados agregados para artigos sobre comportamento sustentável e educação ambiental.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-brand"><span class="dot"></span>EcoScan</div>
+      <div class="foot-links">
+        <a href="#hero">Início</a>
+        <a href="#dashboard">App</a>
+        <a href="#about">Sobre</a>
+        <a href="#">Contato</a>
+      </div>
+      <div class="foot-meta">Unifacisa — Campina Grande, PB · 2025</div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

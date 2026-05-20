@@ -6,6 +6,7 @@ dist/
 build/
 coverage/
 .turbo/
+*.tsbuildinfo
 
 # Environment files
 .env
@@ -31,6 +32,7 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+.claude/settings.local.json
 
 # Local uploads / generated media
 uploads/*

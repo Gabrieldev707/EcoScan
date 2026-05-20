@@ -9,9 +9,9 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../navigation/AuthNavigator';
+import { useAuth } from '../hooks/useAuth';
 import { EcoInput } from '../components/EcoInput';
 import { EcoButton } from '../components/EcoButton';
 import { colors } from '../theme/colors';
@@ -29,6 +29,7 @@ function validate(name: string, email: string, pwd: string, confirm: string) {
 }
 
 export function RegisterScreen({ navigation }: Props) {
+  const { loginMock } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,9 +54,8 @@ export function RegisterScreen({ navigation }: Props) {
     setErrors({});
     setLoading(true);
     await new Promise(r => setTimeout(r, 900));
-    await AsyncStorage.setItem('token', 'fake-token-ecoscan');
+    await loginMock(name, email);
     setLoading(false);
-    navigation.replace('App', { name });
   };
 
   return (
