@@ -10,6 +10,12 @@ Identificação inteligente de resíduos via câmera e IA. Cada descarte correto
 
 ---
 
+## Versão Ativa
+
+O desenvolvimento atual fica em `frontend/` e `mobile/`. A versão estática anterior foi preservada apenas como legado (`/v1/` e arquivos HTML/CSS/JS na raiz) e está listada no `.gitignore` junto com arquivos locais de assistentes, como `CLAUDE.md` e `.claude/`.
+
+---
+
 ## Módulos
 
 | Módulo | Tecnologia | Status |
@@ -32,22 +38,29 @@ npm run build        # dist/
 ```
 
 > Crie `frontend/.env.local` com `VITE_API_URL=http://localhost:3000/api` quando a API estiver disponível.
+> Por padrão o login web usa mock local. Para apontar para o backend real, adicione também `VITE_USE_MOCK_AUTH=false`.
 
 ### Mobile
 
 ```bash
 cd mobile
 npm install
-npm start            # Expo DevTools / Expo Go
+npm start            # Expo Go em LAN
+npm run start:lan    # limpa cache e gera QR com IP da rede
+npm run start:tunnel # use se o iPhone nao acessar o IP da rede
+npm run start:localhost
+npm run web
 npm run android
 npm run ios
 ```
 
-Se o Expo Go ficar com fonte ou bundle antigo:
+Se o Expo Go ficar com fonte, bundle antigo ou QR apontando para `127.0.0.1`:
 
 ```bash
-npx expo start --clear
+npm run start:lan
 ```
+
+No iPhone fisico, o QR deve apontar para o IP do computador na rede, por exemplo `exp://192.168.0.131:8081`. `127.0.0.1` so funciona no proprio computador/simulador.
 
 ### Backend
 
@@ -63,8 +76,11 @@ EcoScan/
 ├── mobile/            App React Native/Expo para Expo Go
 ├── uploads/           Assets compartilhados, incluindo logo
 ├── .env.example       Exemplo de variáveis de ambiente
+├── .gitignore
 └── README.md
 ```
+
+Arquivos da versão estática anterior ficam fora da estrutura ativa do projeto.
 
 ---
 
@@ -132,8 +148,13 @@ O web e o mobile usam a mesma direção visual:
 ## Validação
 
 ```bash
+cd frontend
+npm run build
+```
+
+```bash
 cd mobile
 npx tsc --noEmit
 ```
 
-Esse comando valida o TypeScript do app mobile, incluindo navegação, telas e componentes.
+Esses comandos validam o build web e o TypeScript do app mobile, incluindo navegação, telas e componentes.

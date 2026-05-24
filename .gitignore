@@ -32,7 +32,19 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
-.claude/settings.local.json
+
+# AI assistant local/project notes
+CLAUDE.md
+.claude/
+.cluade/
+
+# Previous static version / legacy files
+/v1/
+/index.html
+/styles.css
+/app.js
+/hero-video.mp4
+/Guia de Descarte.html
 
 # Local uploads / generated media
 uploads/*
