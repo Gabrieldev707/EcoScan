@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,        
   Dimensions,
   Image,
   Pressable,
@@ -25,27 +26,13 @@ import { Feather } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 import type { ScanResult } from '../types/scan';
+import { scansApi } from '../api/scans';
+import { useAuth } from '../hooks/useAuth';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FRAME = SW * 0.7;
 
-// ─── mock ────────────────────────────────────────────────────────────────────
-const mockScan = async (_base64: string): Promise<ScanResult> => {
-  await new Promise(r => setTimeout(r, 2000));
-  return {
-    item: 'Garrafa PET',
-    category: 'Plástico',
-    binColor: 'Vermelho',
-    binHex: '#ef4444',
-    howToDispose: 'Esvazie, amasse e descarte na lixeira vermelha.',
-    canRecycle: true,
-    points: 12,
-  };
-};
 
-const mockSave = async () => {
-  await new Promise(r => setTimeout(r, 600));
-};
 
 // ─── types ───────────────────────────────────────────────────────────────────
 type State = 'idle' | 'camera' | 'loading' | 'result';
@@ -54,6 +41,18 @@ interface CaptureData {
   uri: string;
   base64: string;
   city: string;
+}
+// ─── helpers ─────────────────────────────────────────────────────────────────
+function categoryToHex(category: string): string {
+  const map: Record<string, string> = {
+    'Plástico': '#ef4444',
+    'Papel':    '#3b82f6',
+    'Metal':    '#eab308',
+    'Vidro':    '#22c55e',
+    'Orgânico': '#a16207',
+    'Rejeito':  '#6b7280',
+  };
+  return map[category] ?? '#6b7280';
 }
 
 // ─── sub-components ──────────────────────────────────────────────────────────
@@ -251,6 +250,7 @@ function ResultCard({
 
 // ─── main screen ─────────────────────────────────────────────────────────────
 export function ScannerScreen() {
+  const { token } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [state, setState] = useState<State>('idle');
   const [capture, setCapture] = useState<CaptureData | null>(null);
@@ -273,9 +273,23 @@ export function ScannerScreen() {
     const city = await getCity();
     setCapture({ uri, base64, city });
     setState('loading');
-    const res = await mockScan(base64);
-    setResult(res);
-    setState('result');
+  
+    try {
+      const scan = await scansApi.create(base64);
+      setResult({
+        item: scan.wasteType,
+        category: scan.category,
+        binColor: scan.disposalGuide,
+        binHex: categoryToHex(scan.category),
+        howToDispose: scan.disposalGuide,
+        canRecycle: scan.category !== 'Rejeito',
+        points: scan.points,
+      });
+      setState('result');
+    } catch {
+      setState('idle');
+      Alert.alert('Erro', 'Não foi possível identificar o resíduo.');
+    }
   }, []);
 
   const openCamera = async () => {
@@ -361,7 +375,7 @@ export function ScannerScreen() {
         <ResultCard
           result={result}
           capture={capture}
-          onSave={mockSave}
+          onSave={async () => {}}
           onReset={reset}
         />
       </View>

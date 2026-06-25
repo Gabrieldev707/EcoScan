@@ -1,90 +1,88 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
-} from 'react-native-reanimated';
-import { Feather } from '@expo/vector-icons';
-import { ImpactCard } from '../components/ImpactCard';
-import { colors } from '../theme/colors';
-import { fonts } from '../theme/fonts';
+} from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
+import { ImpactCard } from "../components/ImpactCard";
+import { colors } from "../theme/colors";
+import { fonts } from "../theme/fonts";
+import { useAuth } from "../hooks/useAuth";
+import { scansApi, type Scan } from "../api/scans";
 
 // ─── mock data ───────────────────────────────────────────────────────────────
 
 const IMPACT_METRICS = [
-  { value: '47,3 kg', label: 'Descartados', icon: 'trash-2' as const },
-  { value: '12,8 kg', label: 'CO2 Evitado', icon: 'wind' as const },
-  { value: '340 L', label: 'Agua Poupada', icon: 'droplet' as const },
-  { value: '2.840', label: 'EcoPoints', icon: 'star' as const },
+  { value: "47,3 kg", label: "Descartados", icon: "trash-2" as const },
+  { value: "12,8 kg", label: "CO2 Evitado", icon: "wind" as const },
+  { value: "340 L", label: "Agua Poupada", icon: "droplet" as const },
+  { value: "2.840", label: "EcoPoints", icon: "star" as const },
 ];
 
-const WEEKLY_BARS = [
-  { day: 'Seg', scans: 18 },
-  { day: 'Ter', scans: 24 },
-  { day: 'Qua', scans: 12 },
-  { day: 'Qui', scans: 31 },
-  { day: 'Sex', scans: 28 },
-  { day: 'Sab', scans: 22 },
-  { day: 'Dom', scans: 12 },
-];
-
-const MAX_SCANS = Math.max(...WEEKLY_BARS.map((b) => b.scans));
 const BAR_MAX_HEIGHT = 130;
 
 const GUIDE_CATEGORIES = [
   {
-    name: 'Plastico',
-    color: '#ef4444',
-    accepted: ['Garrafas PET', 'Potes', 'Embalagens', 'Sacolas limpas'],
-    rejected: ['Plastico sujo', 'Isopor', 'Fita adesiva'],
-    tip: 'Esvazie e amasse antes de descartar na lixeira vermelha.',
+    name: "Plastico",
+    color: "#ef4444",
+    accepted: ["Garrafas PET", "Potes", "Embalagens", "Sacolas limpas"],
+    rejected: ["Plastico sujo", "Isopor", "Fita adesiva"],
+    tip: "Esvazie e amasse antes de descartar na lixeira vermelha.",
   },
   {
-    name: 'Papel',
-    color: '#3b82f6',
-    accepted: ['Papelao', 'Revistas', 'Jornais', 'Caixas limpas'],
-    rejected: ['Papel engordurado', 'Papel higienico', 'Fotografias'],
-    tip: 'Mantenha seco e desdobre as caixas para economizar espaco.',
+    name: "Papel",
+    color: "#3b82f6",
+    accepted: ["Papelao", "Revistas", "Jornais", "Caixas limpas"],
+    rejected: ["Papel engordurado", "Papel higienico", "Fotografias"],
+    tip: "Mantenha seco e desdobre as caixas para economizar espaco.",
   },
   {
-    name: 'Metal',
-    color: '#eab308',
-    accepted: ['Latas de aluminio', 'Tampinhas', 'Ferragens', 'Fios'],
-    rejected: ['Latas com produto', 'Aerossol pressurizado', 'Tinta'],
-    tip: 'Amasse latas para reduzir volume antes do descarte.',
+    name: "Metal",
+    color: "#eab308",
+    accepted: ["Latas de aluminio", "Tampinhas", "Ferragens", "Fios"],
+    rejected: ["Latas com produto", "Aerossol pressurizado", "Tinta"],
+    tip: "Amasse latas para reduzir volume antes do descarte.",
   },
   {
-    name: 'Vidro',
-    color: '#22c55e',
-    accepted: ['Garrafas', 'Frascos', 'Potes de conserva', 'Copos'],
-    rejected: ['Espelhos', 'Vidro temperado', 'Ceramica', 'Lampadas'],
-    tip: 'Embale vidros quebrados em jornal antes de descartar.',
+    name: "Vidro",
+    color: "#22c55e",
+    accepted: ["Garrafas", "Frascos", "Potes de conserva", "Copos"],
+    rejected: ["Espelhos", "Vidro temperado", "Ceramica", "Lampadas"],
+    tip: "Embale vidros quebrados em jornal antes de descartar.",
   },
   {
-    name: 'Rejeito',
-    color: '#6b7280',
-    accepted: ['Fraldas', 'Papel higienico', 'Guardanapos usados'],
-    rejected: ['Nada e reciclavel aqui'],
-    tip: 'Descarte na lixeira cinza. Reduza ao maximo esse volume.',
+    name: "Rejeito",
+    color: "#6b7280",
+    accepted: ["Fraldas", "Papel higienico", "Guardanapos usados"],
+    rejected: ["Nada e reciclavel aqui"],
+    tip: "Descarte na lixeira cinza. Reduza ao maximo esse volume.",
   },
 ];
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
-function AnimatedBar({ scans, index }: { scans: number; index: number }) {
+function AnimatedBar({
+  day,
+  scans,
+  index,
+  max,
+}: {
+  day: string;
+  scans: number;
+  index: number;
+  max: number;
+}) {
   const height = useSharedValue(0);
-  const targetH = Math.round((scans / MAX_SCANS) * BAR_MAX_HEIGHT);
+  const targetH = Math.round((scans / max) * BAR_MAX_HEIGHT);
 
   useEffect(() => {
-    height.value = withDelay(index * 60, withTiming(targetH, { duration: 600 }));
+    height.value = withDelay(
+      index * 60,
+      withTiming(targetH, { duration: 600 })
+    );
   }, [height, targetH, index]);
 
   const barStyle = useAnimatedStyle(() => ({ height: height.value }));
@@ -93,7 +91,7 @@ function AnimatedBar({ scans, index }: { scans: number; index: number }) {
     <View style={barStyles.wrap}>
       <Text style={barStyles.tip}>{scans}</Text>
       <Animated.View style={[barStyles.bar, barStyle]} />
-      <Text style={barStyles.day}>{WEEKLY_BARS[index].day}</Text>
+      <Text style={barStyles.day}>{day}</Text>
     </View>
   );
 }
@@ -102,8 +100,8 @@ const barStyles = StyleSheet.create({
   wrap: {
     flex: 1,
     height: BAR_MAX_HEIGHT + 40,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    alignItems: "center",
+    justifyContent: "flex-end",
     gap: 6,
   },
   tip: {
@@ -113,7 +111,7 @@ const barStyles = StyleSheet.create({
     lineHeight: 16,
   },
   bar: {
-    width: '100%',
+    width: "100%",
     maxWidth: 26,
     backgroundColor: colors.green,
   },
@@ -122,7 +120,7 @@ const barStyles = StyleSheet.create({
     fontSize: 9,
     color: colors.muted,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 });
 
@@ -137,14 +135,21 @@ function AccordionItem({ item }: { item: (typeof GUIDE_CATEGORIES)[number] }) {
     height.value = withTiming(next ? CONTENT_HEIGHT : 0, { duration: 280 });
   };
 
-  const bodyStyle = useAnimatedStyle(() => ({ height: height.value, overflow: 'hidden' }));
+  const bodyStyle = useAnimatedStyle(() => ({
+    height: height.value,
+    overflow: "hidden",
+  }));
 
   return (
     <View style={accordionStyles.item}>
       <Pressable style={accordionStyles.header} onPress={toggle}>
         <View style={[accordionStyles.dot, { backgroundColor: item.color }]} />
         <Text style={accordionStyles.name}>{item.name}</Text>
-        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
+        <Feather
+          name={open ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={colors.muted}
+        />
       </Pressable>
 
       <Animated.View style={bodyStyle}>
@@ -182,8 +187,8 @@ const accordionStyles = StyleSheet.create({
     marginBottom: 8,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     padding: 16,
   },
@@ -197,7 +202,7 @@ const accordionStyles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 24,
     color: colors.text,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   body: {
@@ -210,18 +215,18 @@ const accordionStyles = StyleSheet.create({
     fontSize: 9,
     color: colors.muted,
     letterSpacing: 1.6,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginTop: 4,
   },
   pills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
   },
   pillGreen: {
     paddingHorizontal: 9,
     paddingVertical: 4,
-    backgroundColor: 'rgba(29,255,138,0.08)',
+    backgroundColor: "rgba(29,255,138,0.08)",
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
@@ -234,9 +239,9 @@ const accordionStyles = StyleSheet.create({
   pillRed: {
     paddingHorizontal: 9,
     paddingVertical: 4,
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    backgroundColor: "rgba(239,68,68,0.08)",
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
+    borderColor: "rgba(239,68,68,0.3)",
   },
   pillRedText: {
     fontFamily: fonts.bodySemiBold,
@@ -255,14 +260,18 @@ const accordionStyles = StyleSheet.create({
 
 // ─── animated progress bar ────────────────────────────────────────────────────
 
-function ProgressBar() {
+function ProgressBar({ points }: { points: number }) {
   const width = useSharedValue(0);
+  const nextLevel = Math.ceil((points + 1) / 500) * 500;
+  const progress = points / nextLevel;
 
   useEffect(() => {
-    width.value = withDelay(200, withTiming(0.84, { duration: 900 }));
-  }, [width]);
+    width.value = withDelay(200, withTiming(progress, { duration: 900 }));
+  }, [width, progress]);
 
-  const barStyle = useAnimatedStyle(() => ({ width: `${width.value * 100}%` as unknown as number }));
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${width.value * 100}%` as unknown as number,
+  }));
 
   return (
     <View style={progressStyles.track}>
@@ -274,29 +283,54 @@ function ProgressBar() {
 const progressStyles = StyleSheet.create({
   track: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    overflow: 'hidden',
+    backgroundColor: "rgba(255,255,255,0.05)",
+    overflow: "hidden",
     marginTop: 10,
   },
   fill: {
-    height: '100%',
+    height: "100%",
     backgroundColor: colors.green,
   },
 });
 
 // ─── main screen ─────────────────────────────────────────────────────────────
 
-type Tab = 'impacto' | 'guia';
+type Tab = "impacto" | "guia";
 
 export function DashboardScreen() {
-  const [activeTab, setActiveTab] = useState<Tab>('impacto');
+  const { user } = useAuth();
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>("impacto");
   const impactoOpacity = useSharedValue(1);
   const guiaOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    scansApi
+      .list(1)
+      .then((res) => setScans(res.items))
+      .catch(() => setScans([]));
+  }, []);
+
+  const weeklyData = useMemo(() => {
+    const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+    const counts: Record<string, number> = {};
+    days.forEach((d) => (counts[d] = 0));
+    scans.forEach((s) => {
+      const day = days[new Date(s.createdAt).getDay()];
+      counts[day] = (counts[day] || 0) + 1;
+    });
+    return days.map((day) => ({ day, scans: counts[day] }));
+  }, [scans]);
+
+  const maxScans = useMemo(
+    () => Math.max(1, ...weeklyData.map((b) => b.scans)),
+    [weeklyData]
+  );
 
   const switchTab = (tab: Tab) => {
     if (tab === activeTab) return;
     setActiveTab(tab);
-    if (tab === 'impacto') {
+    if (tab === "impacto") {
       guiaOpacity.value = withTiming(0, { duration: 180 });
       impactoOpacity.value = withTiming(1, { duration: 180 });
     } else {
@@ -305,50 +339,71 @@ export function DashboardScreen() {
     }
   };
 
-  const impactoStyle = useAnimatedStyle(() => ({ opacity: impactoOpacity.value }));
+  const impactoStyle = useAnimatedStyle(() => ({
+    opacity: impactoOpacity.value,
+  }));
   const guiaStyle = useAnimatedStyle(() => ({ opacity: guiaOpacity.value }));
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Ola, Gabriel</Text>
+        <Text style={styles.greeting}>
+          Ola, {user?.name?.split(" ")[0] ?? ""}
+        </Text>
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>Nivel 8</Text>
+          <Text style={styles.levelText}>Nivel {user?.level ?? 1}</Text>
         </View>
       </View>
 
       {/* Progress bar */}
       <View style={styles.progressCard}>
         <View style={styles.progressTop}>
-          <Text style={styles.progressLabel}>2.840 / 3.000 pts</Text>
+          <Text style={styles.progressLabel}>{user?.points ?? 0} pts</Text>
           <Text style={styles.progressSub}>Proximo nivel: Especialista</Text>
         </View>
-        <ProgressBar />
+        <ProgressBar points={user?.points ?? 0} />
       </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
         <Pressable
-          style={[styles.tabBtn, activeTab === 'impacto' && styles.tabBtnActive]}
-          onPress={() => switchTab('impacto')}
+          style={[
+            styles.tabBtn,
+            activeTab === "impacto" && styles.tabBtnActive,
+          ]}
+          onPress={() => switchTab("impacto")}
         >
-          <Text style={[styles.tabText, activeTab === 'impacto' && styles.tabTextActive]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "impacto" && styles.tabTextActive,
+            ]}
+          >
             Impacto
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.tabBtn, activeTab === 'guia' && styles.tabBtnActive]}
-          onPress={() => switchTab('guia')}
+          style={[styles.tabBtn, activeTab === "guia" && styles.tabBtnActive]}
+          onPress={() => switchTab("guia")}
         >
-          <Text style={[styles.tabText, activeTab === 'guia' && styles.tabTextActive]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "guia" && styles.tabTextActive,
+            ]}
+          >
             Guia
           </Text>
         </Pressable>
       </View>
 
       {/* Tab 1 — Impacto */}
-      {activeTab === 'impacto' && (
+      {activeTab === "impacto" && (
         <Animated.View style={impactoStyle}>
           {/* 2x2 metric grid */}
           <View style={styles.metricGrid}>
@@ -366,8 +421,14 @@ export function DashboardScreen() {
               <Text style={styles.panelSub}>Semana</Text>
             </View>
             <View style={styles.chart}>
-              {WEEKLY_BARS.map((bar, i) => (
-                <AnimatedBar key={bar.day} scans={bar.scans} index={i} />
+              {weeklyData.map((bar, i) => (
+                <AnimatedBar
+                  key={bar.day}
+                  day={bar.day}
+                  scans={bar.scans}
+                  index={i}
+                  max={maxScans}
+                />
               ))}
             </View>
           </View>
@@ -386,7 +447,7 @@ export function DashboardScreen() {
       )}
 
       {/* Tab 2 — Guia */}
-      {activeTab === 'guia' && (
+      {activeTab === "guia" && (
         <Animated.View style={guiaStyle}>
           <Text style={styles.guiaIntro}>
             Saiba como preparar cada tipo de residuo para o descarte correto.
@@ -414,22 +475,22 @@ const styles = StyleSheet.create({
 
   // header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   greeting: {
     fontFamily: fonts.display,
     fontSize: 36,
     color: colors.text,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   levelBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(29,255,138,0.1)',
+    backgroundColor: "rgba(29,255,138,0.1)",
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
@@ -438,7 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.green,
     letterSpacing: 1.6,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 
   // progress
@@ -450,9 +511,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   progressLabel: {
     fontFamily: fonts.display,
@@ -465,19 +526,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.muted,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 
   // tabs
   tabs: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginBottom: 20,
   },
   tabBtn: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -492,7 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   tabTextActive: {
     color: colors.green,
@@ -500,13 +561,13 @@ const styles = StyleSheet.create({
 
   // impacto tab
   metricGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginHorizontal: -5,
     marginBottom: 8,
   },
   metricCell: {
-    width: '50%',
+    width: "50%",
     padding: 5,
   },
 
@@ -520,16 +581,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   panelHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   panelTitle: {
     fontFamily: fonts.display,
     fontSize: 26,
     color: colors.text,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   panelSub: {
@@ -537,31 +598,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.green,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   chart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: 6,
     height: BAR_MAX_HEIGHT + 40,
   },
 
   // streak
   streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 14,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(29,255,138,0.04)',
+    backgroundColor: "rgba(29,255,138,0.04)",
     padding: 16,
   },
   streakIcon: {
     width: 44,
     height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(29,255,138,0.1)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(29,255,138,0.1)",
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
@@ -573,14 +634,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.muted,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   streakValue: {
     fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text,
     letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 
   // guia tab

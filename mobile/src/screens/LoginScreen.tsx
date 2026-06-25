@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,21 +8,22 @@ import {
   Animated,
   Pressable,
   StyleSheet,
-} from 'react-native';
-import type { StackScreenProps } from '@react-navigation/stack';
-import type { AuthStackParamList } from '../navigation/AuthNavigator';
-import { useAuth } from '../hooks/useAuth';
-import { EcoInput } from '../components/EcoInput';
-import { EcoButton } from '../components/EcoButton';
-import { colors } from '../theme/colors';
-import { fonts } from '../theme/fonts';
+  Alert,
+} from "react-native";
+import type { StackScreenProps } from "@react-navigation/stack";
+import type { AuthStackParamList } from "../navigation/AuthNavigator";
+import { useAuth } from "../hooks/useAuth";
+import { EcoInput } from "../components/EcoInput";
+import { EcoButton } from "../components/EcoButton";
+import { colors } from "../theme/colors";
+import { fonts } from "../theme/fonts";
 
-type Props = StackScreenProps<AuthStackParamList, 'Login'>;
+type Props = StackScreenProps<AuthStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
-  const { loginMock } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const shakeX = useRef(new Animated.Value(0)).current;
@@ -32,21 +33,57 @@ export function LoginScreen({ navigation }: Props) {
   React.useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale, { toValue: 1.4, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseScale, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseScale, {
+          toValue: 1.4,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseScale, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
       ])
     ).start();
   }, [pulseScale]);
 
   const shake = () => {
     Animated.sequence([
-      Animated.timing(shakeX, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeX, {
+        toValue: 10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: -10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: 10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: -10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: 6,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: -6,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeX, {
+        toValue: 0,
+        duration: 60,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
@@ -56,16 +93,20 @@ export function LoginScreen({ navigation }: Props) {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    const name = email.split('@')[0];
-    await loginMock(name, email);
-    setLoading(false);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      shake();
+      Alert.alert("Erro", err.message || "Credenciais inválidas.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -75,13 +116,17 @@ export function LoginScreen({ navigation }: Props) {
         {/* Logo */}
         <View style={styles.logoRow}>
           <Text style={styles.logoText}>EcoScan</Text>
-          <Animated.View style={[styles.dot, { transform: [{ scale: pulseScale }] }]} />
+          <Animated.View
+            style={[styles.dot, { transform: [{ scale: pulseScale }] }]}
+          />
         </View>
         <Text style={styles.sub}>Identificação Inteligente de Resíduos</Text>
 
         {/* Card */}
-        <Animated.View style={[styles.card, { transform: [{ translateX: shakeX }] }]}>
-          <Text style={styles.title}>Bem-vindo{'\n'}de volta.</Text>
+        <Animated.View
+          style={[styles.card, { transform: [{ translateX: shakeX }] }]}
+        >
+          <Text style={styles.title}>Bem-vindo{"\n"}de volta.</Text>
           <Text style={styles.lead}>Entre para continuar reciclando.</Text>
 
           <EcoInput
@@ -100,7 +145,11 @@ export function LoginScreen({ navigation }: Props) {
             isPassword
           />
 
-          <EcoButton label="Entrar na conta" onPress={handleLogin} loading={loading} />
+          <EcoButton
+            label="Entrar na conta"
+            onPress={handleLogin}
+            loading={loading}
+          />
 
           <Pressable onPress={() => {}} style={styles.forgotWrap}>
             <Text style={styles.forgot}>Esqueci a senha</Text>
@@ -110,7 +159,7 @@ export function LoginScreen({ navigation }: Props) {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Não tem conta? </Text>
-          <Pressable onPress={() => navigation.navigate('Register')}>
+          <Pressable onPress={() => navigation.navigate("Register")}>
             <Text style={styles.footerLink}>Criar conta</Text>
           </Pressable>
         </View>
@@ -131,8 +180,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 6,
     gap: 10,
   },
@@ -153,11 +202,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.green,
     letterSpacing: 2.1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginBottom: 40,
   },
   card: {
-    backgroundColor: 'rgba(29,255,138,0.04)',
+    backgroundColor: "rgba(29,255,138,0.04)",
     borderRadius: 2,
     padding: 28,
     borderWidth: 1,
@@ -170,7 +219,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 52,
     letterSpacing: 0.2,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   lead: {
     fontFamily: fonts.bodyLight,
@@ -180,7 +229,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   forgotWrap: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 16,
     paddingVertical: 4,
     borderBottomWidth: 1,
@@ -191,11 +240,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 32,
   },
   footerText: {
@@ -203,13 +252,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.muted,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   footerLink: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     color: colors.green,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 });

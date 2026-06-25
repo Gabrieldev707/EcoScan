@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,15 +6,17 @@ import {
   Animated,
   Pressable,
   StyleSheet,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Feather } from '@expo/vector-icons';
-import { ImpactCard } from '../components/ImpactCard';
-import { MedalCard } from '../components/MedalCard';
-import { EcoButton } from '../components/EcoButton';
-import { colors } from '../theme/colors';
-import { fonts } from '../theme/fonts';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Feather } from "@expo/vector-icons";
+import { ImpactCard } from "../components/ImpactCard";
+import { MedalCard } from "../components/MedalCard";
+import { EcoButton } from "../components/EcoButton";
+import { colors } from "../theme/colors";
+import { fonts } from "../theme/fonts";
+import { scansApi, type Scan } from "../api/scans";
+import { useAuth } from "../hooks/useAuth";
 
 type Props = {
   route: { params: { name: string } };
@@ -22,16 +24,10 @@ type Props = {
 };
 
 const MEDALS = [
-  { title: 'Primeiro Scan', icon: 'camera' as const, earned: true },
-  { title: '10 Descartes', icon: 'repeat' as const, earned: true },
-  { title: 'Guardião Verde', icon: 'shield' as const, earned: true },
-  { title: 'Mestre da Reciclagem', icon: 'award' as const, earned: false },
-];
-
-const RECENT_SCANS = [
-  { icon: 'package' as const, name: 'Garrafa PET — 600 ml', date: 'Hoje, 09:42', pts: '+12' },
-  { icon: 'file-text' as const, name: 'Caixa de papelão', date: 'Hoje, 08:11', pts: '+8' },
-  { icon: 'battery-charging' as const, name: 'Pilha AA · 4 un', date: 'Ontem, 17:30', pts: '+30' },
+  { title: "Primeiro Scan", icon: "camera" as const, earned: true },
+  { title: "10 Descartes", icon: "repeat" as const, earned: true },
+  { title: "Guardião Verde", icon: "shield" as const, earned: true },
+  { title: "Mestre da Reciclagem", icon: "award" as const, earned: false },
 ];
 
 function useEntryAnim(delay: number) {
@@ -40,8 +36,18 @@ function useEntryAnim(delay: number) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 400,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 400,
+        delay,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, [opacity, translateY, delay]);
 
@@ -50,11 +56,21 @@ function useEntryAnim(delay: number) {
 
 export function ProfileScreen({ route, onLogout }: Props) {
   const { name } = route.params;
+  const { user } = useAuth();
+  const [recentScans, setRecentScans] = useState<Scan[]>([]);
+
+  useEffect(() => {
+    scansApi
+      .list(1)
+      .then((res) => setRecentScans(res.items.slice(0, 3)))
+      .catch(() => setRecentScans([]));
+  }, []);
+
   const initials = name
-    .split(' ')
+    .split(" ")
     .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? '')
-    .join('');
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 
   const headerAnim = useEntryAnim(0);
   const impactAnim = useEntryAnim(100);
@@ -71,7 +87,10 @@ export function ProfileScreen({ route, onLogout }: Props) {
     <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <Animated.View style={headerAnim}>
-        <LinearGradient colors={[colors.bg, colors.surface2]} style={styles.header}>
+        <LinearGradient
+          colors={[colors.bg, colors.surface2]}
+          style={styles.header}
+        >
           <LinearGradient
             colors={[colors.greenDim, colors.green]}
             style={styles.avatar}
@@ -80,7 +99,9 @@ export function ProfileScreen({ route, onLogout }: Props) {
           </LinearGradient>
           <Text style={styles.userName}>{name}</Text>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Nível 3 — Guardião Verde</Text>
+            <Text style={styles.badgeText}>
+              Nível {user?.level ?? 1} — Guardião Verde
+            </Text>
           </View>
         </LinearGradient>
       </Animated.View>
@@ -91,12 +112,16 @@ export function ProfileScreen({ route, onLogout }: Props) {
           <Text style={styles.sectionTitle}>Seu impacto</Text>
           <View style={styles.grid}>
             <View style={styles.row}>
-              <ImpactCard value="47,3 kg" label="Descartados" icon="trash-2" />
+              <ImpactCard
+                value={String(user?.points ?? 0)}
+                label="Pontos acumulados"
+                icon="star"
+              />
               <ImpactCard value="12,8 kg" label="CO₂ evitado" icon="wind" />
             </View>
             <View style={styles.row}>
               <ImpactCard value="340 L" label="Água poupada" icon="droplet" />
-              <ImpactCard value="2.840" label="Pontos acumulados" icon="star" />
+              <ImpactCard value="47" label="Itens reciclados" icon="package" />
             </View>
           </View>
         </Animated.View>
@@ -109,8 +134,13 @@ export function ProfileScreen({ route, onLogout }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.medals}
           >
-            {MEDALS.map(m => (
-              <MedalCard key={m.title} title={m.title} icon={m.icon} earned={m.earned} />
+            {MEDALS.map((m) => (
+              <MedalCard
+                key={m.title}
+                title={m.title}
+                icon={m.icon}
+                earned={m.earned}
+              />
             ))}
           </ScrollView>
         </Animated.View>
@@ -125,24 +155,38 @@ export function ProfileScreen({ route, onLogout }: Props) {
             </Pressable>
           </View>
           <View style={styles.scanList}>
-            {RECENT_SCANS.map(s => (
-              <View key={s.name} style={styles.scanRow}>
-                <View style={styles.scanIcon}>
-                  <Feather name={s.icon} size={16} color={colors.green} />
-                </View>
-                <View style={styles.scanInfo}>
-                  <Text style={styles.scanName}>{s.name}</Text>
-                  <Text style={styles.scanDate}>{s.date}</Text>
-                </View>
-                <Text style={styles.scanPts}>{s.pts}</Text>
+            {recentScans.length === 0 ? (
+              <View style={styles.scanRow}>
+                <Text style={styles.scanDate}>
+                  Nenhum descarte registrado ainda.
+                </Text>
               </View>
-            ))}
+            ) : (
+              recentScans.map((s) => (
+                <View key={s.id} style={styles.scanRow}>
+                  <View style={styles.scanIcon}>
+                    <Feather name="package" size={16} color={colors.green} />
+                  </View>
+                  <View style={styles.scanInfo}>
+                    <Text style={styles.scanName}>{s.wasteType}</Text>
+                    <Text style={styles.scanDate}>
+                      {new Date(s.createdAt).toLocaleDateString("pt-BR")}
+                    </Text>
+                  </View>
+                  <Text style={styles.scanPts}>+{s.points}</Text>
+                </View>
+              ))
+            )}
           </View>
         </Animated.View>
 
         {/* Logout */}
         <Animated.View style={[logoutAnim, styles.logoutWrap]}>
-          <EcoButton label="Sair da conta" onPress={handleLogout} variant="danger" />
+          <EcoButton
+            label="Sair da conta"
+            onPress={handleLogout}
+            variant="danger"
+          />
         </Animated.View>
       </View>
     </ScrollView>
@@ -155,7 +199,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 80,
     paddingBottom: 36,
     paddingHorizontal: 24,
@@ -164,8 +208,8 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   initials: {
@@ -179,11 +223,11 @@ const styles = StyleSheet.create({
     fontSize: 44,
     color: colors.text,
     marginBottom: 10,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
     lineHeight: 46,
   },
   badge: {
-    backgroundColor: 'rgba(29,255,138,0.12)',
+    backgroundColor: "rgba(29,255,138,0.12)",
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: 2,
@@ -195,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.green,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   body: {
     padding: 20,
@@ -207,12 +251,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     marginTop: 4,
     letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
     marginTop: 4,
   },
@@ -221,15 +265,15 @@ const styles = StyleSheet.create({
     marginHorizontal: -5,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   medals: {
     paddingBottom: 8,
     marginBottom: 28,
   },
   seeAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 2,
   },
   seeAllText: {
@@ -237,19 +281,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.green,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   scanList: {
     backgroundColor: colors.surface,
     borderRadius: 2,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 28,
   },
   scanRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -259,9 +303,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 2,
-    backgroundColor: 'rgba(29,255,138,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(29,255,138,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   scanInfo: {
