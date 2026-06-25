@@ -1,0 +1,9 @@
+{
+  "name": "ecoscan",
+  "scripts": {
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd mobile && npx expo start\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

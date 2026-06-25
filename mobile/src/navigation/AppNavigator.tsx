@@ -1,17 +1,17 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Feather } from '@expo/vector-icons';
-import { ScannerScreen } from '../screens/ScannerScreen';
-import { MapScreen } from '../screens/MapScreen';
-import { DashboardScreen } from '../screens/DashboardScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
-import { CommunityScreen } from '../screens/CommunityScreen';
-import { colors } from '../theme/colors';
-import { fonts } from '../theme/fonts';
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
+import { ScannerScreen } from "../screens/ScannerScreen";
+// import { MapScreen } from '../screens/MapScreen';
+import { DashboardScreen } from "../screens/DashboardScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
+import { CommunityScreen } from "../screens/CommunityScreen";
+import { colors } from "../theme/colors";
+import { fonts } from "../theme/fonts";
 
 export type AppTabParamList = {
   Scanner: undefined;
-  Mapa: undefined;
+  // Mapa: undefined;
   Dashboard: undefined;
   Perfil: { name: string };
   Comunidade: undefined;
@@ -19,7 +19,13 @@ export type AppTabParamList = {
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-export function AppNavigator({ userName, onLogout }: { userName: string; onLogout?: () => void }) {
+export function AppNavigator({
+  userName,
+  onLogout,
+}: {
+  userName: string;
+  onLogout?: () => void;
+}) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -38,22 +44,31 @@ export function AppNavigator({ userName, onLogout }: { userName: string; onLogou
           fontFamily: fonts.bodySemiBold,
           fontSize: 9,
           letterSpacing: 0.8,
-          textTransform: 'uppercase',
+          textTransform: "uppercase",
         },
         tabBarIcon: ({ color, size }) => {
-          const icons: Record<string, React.ComponentProps<typeof Feather>['name']> = {
-            Scanner: 'camera',
-            Mapa: 'map',
-            Dashboard: 'bar-chart-2',
-            Perfil: 'user',
-            Comunidade: 'users',
+          const icons: Record<
+            string,
+            React.ComponentProps<typeof Feather>["name"]
+          > = {
+            Scanner: "camera",
+            // Mapa: 'map',
+            Dashboard: "bar-chart-2",
+            Perfil: "user",
+            Comunidade: "users",
           };
-          return <Feather name={icons[route.name] ?? 'circle'} size={size} color={color} />;
+          return (
+            <Feather
+              name={icons[route.name] ?? "circle"}
+              size={size}
+              color={color}
+            />
+          );
         },
       })}
     >
       <Tab.Screen name="Scanner" component={ScannerScreen} />
-      <Tab.Screen name="Mapa" component={MapScreen} />
+      {/* <Tab.Screen name="Mapa" component={MapScreen} /> */}
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Perfil" initialParams={{ name: userName }}>
         {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
