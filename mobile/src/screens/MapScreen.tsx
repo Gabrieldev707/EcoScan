@@ -1,14 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import Animated, {
   useAnimatedStyle,
@@ -17,11 +19,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import { ecopointsApi } from '../api/ecopoints';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 import type { EcoPoint } from '../types/ecopoint';
 
 const { height: SH } = Dimensions.get('window');
+
+const DEFAULT_COORDS = {
+  latitude: -7.2301,
+  longitude: -35.8816,
+};
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -34,51 +42,6 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
-const MOCK_ECOPOINTS: EcoPoint[] = [
-  {
-    id: '1',
-    name: 'Ecoponto Central',
-    address: 'R. Venancio Neiva, 123',
-    lat: -7.2301,
-    lng: -35.8816,
-    categories: ['Plastico', 'Papel', 'Metal'],
-  },
-  {
-    id: '2',
-    name: 'Ecoponto Bodocongo',
-    address: 'Av. Mal. Floriano, 456',
-    lat: -7.218,
-    lng: -35.9012,
-    categories: ['Vidro', 'Metal'],
-  },
-  {
-    id: '3',
-    name: 'Ponto Verde Universitario',
-    address: 'R. Aprigio Veloso, 882',
-    lat: -7.2156,
-    lng: -35.9078,
-    categories: ['Plastico', 'Papel'],
-  },
-  {
-    id: '4',
-    name: 'Ecoponto Malvinas',
-    address: 'Av. Portugal, 789',
-    lat: -7.2445,
-    lng: -35.8923,
-    categories: ['Metal', 'Vidro', 'Plastico'],
-  },
-  {
-    id: '5',
-    name: 'Coleta Seletiva Centro',
-    address: 'R. Maciel Pinheiro, 234',
-    lat: -7.2189,
-    lng: -35.8801,
-    categories: ['Papel', 'Plastico'],
-  },
-];
-
-const CATEGORIES = ['Todos', 'Plastico', 'Papel', 'Metal', 'Vidro'];
 
 const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#0c1010' }] },
@@ -97,9 +60,12 @@ const DARK_MAP_STYLE = [
 
 export function MapScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [ecoPoints, setEcoPoints] = useState<EcoPoint[]>([]);
   const [selected, setSelected] = useState<EcoPoint | null>(null);
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [proximityBanner, setProximityBanner] = useState<{ name: string; dist: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const mapRef = useRef<MapView>(null);
   const proximityTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,38 +75,45 @@ export function MapScreen() {
   const cardStyle = useAnimatedStyle(() => ({ transform: [{ translateY: cardY.value }] }));
   const bannerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: bannerY.value }] }));
 
+  const loadEcoPoints = useCallback(async (latitude: number, longitude: number) => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const points = await ecopointsApi.nearby(latitude, longitude, 5);
+      setEcoPoints(points);
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let watcher: Location.LocationSubscription | null = null;
 
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+
+      if (status !== 'granted') {
+        await loadEcoPoints(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
+        return;
+      }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       setUserLocation(coords);
+      await loadEcoPoints(coords.latitude, coords.longitude);
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 1000);
 
       watcher = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, distanceInterval: 50 },
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 100 },
         (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ latitude, longitude });
-
-          const nearby = MOCK_ECOPOINTS.find(
-            (p) => haversine(latitude, longitude, p.lat, p.lng) < 500,
-          );
-          if (nearby) {
-            const dist = Math.round(haversine(latitude, longitude, nearby.lat, nearby.lng));
-            setProximityBanner({ name: nearby.name, dist });
-            bannerY.value = withSpring(0, { damping: 14, stiffness: 100 });
-
-            if (proximityTimeout.current) clearTimeout(proximityTimeout.current);
-            proximityTimeout.current = setTimeout(() => {
-              bannerY.value = withTiming(-80, { duration: 400 });
-              setTimeout(() => setProximityBanner(null), 420);
-            }, 4000);
-          }
+          const coordsFromWatcher = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setUserLocation(coordsFromWatcher);
+          loadEcoPoints(coordsFromWatcher.latitude, coordsFromWatcher.longitude);
         },
       );
     })();
@@ -149,12 +122,38 @@ export function MapScreen() {
       watcher?.remove();
       if (proximityTimeout.current) clearTimeout(proximityTimeout.current);
     };
-  }, [bannerY]);
+  }, [loadEcoPoints]);
+
+  useEffect(() => {
+    if (!userLocation || ecoPoints.length === 0) return;
+
+    const nearby = ecoPoints.find(
+      (point) => haversine(userLocation.latitude, userLocation.longitude, point.lat, point.lng) < 500,
+    );
+
+    if (!nearby) return;
+
+    const dist = Math.round(haversine(userLocation.latitude, userLocation.longitude, nearby.lat, nearby.lng));
+    setProximityBanner({ name: nearby.name, dist });
+    bannerY.value = withSpring(0, { damping: 14, stiffness: 100 });
+
+    if (proximityTimeout.current) clearTimeout(proximityTimeout.current);
+    proximityTimeout.current = setTimeout(() => {
+      bannerY.value = withTiming(-80, { duration: 400 });
+      setTimeout(() => setProximityBanner(null), 420);
+    }, 4000);
+  }, [bannerY, ecoPoints, userLocation]);
+
+  const categories = useMemo(() => {
+    const values = new Set<string>();
+    ecoPoints.forEach((point) => point.categories.forEach((category) => values.add(category)));
+    return ['Todos', ...Array.from(values)];
+  }, [ecoPoints]);
 
   const filtered =
     activeCategory === 'Todos'
-      ? MOCK_ECOPOINTS
-      : MOCK_ECOPOINTS.filter((p) => p.categories.includes(activeCategory));
+      ? ecoPoints
+      : ecoPoints.filter((point) => point.categories.includes(activeCategory));
 
   const selectPoint = (point: EcoPoint) => {
     setSelected(point);
@@ -172,9 +171,16 @@ export function MapScreen() {
   };
 
   const getDistance = (point: EcoPoint): string => {
-    if (!userLocation) return '';
-    const d = Math.round(haversine(userLocation.latitude, userLocation.longitude, point.lat, point.lng));
-    return d < 1000 ? `${d} m` : `${(d / 1000).toFixed(1)} km`;
+    if (userLocation) {
+      const d = Math.round(haversine(userLocation.latitude, userLocation.longitude, point.lat, point.lng));
+      return d < 1000 ? `${d} m` : `${(d / 1000).toFixed(1)} km`;
+    }
+
+    if (typeof point.distance === 'number') {
+      return `${point.distance.toFixed(1)} km`;
+    }
+
+    return '';
   };
 
   const locateUser = () => {
@@ -190,15 +196,13 @@ export function MapScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        provider={PROVIDER_GOOGLE}
-        customMapStyle={DARK_MAP_STYLE}
+        customMapStyle={Platform.OS === 'android' ? DARK_MAP_STYLE : undefined}
         initialRegion={{
-          latitude: -7.2301,
-          longitude: -35.8816,
+          ...DEFAULT_COORDS,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
-        showsUserLocation
+        showsUserLocation={!!userLocation}
         showsMyLocationButton={false}
       >
         {filtered.map((point) => (
@@ -214,43 +218,49 @@ export function MapScreen() {
         ))}
       </MapView>
 
-      {/* Proximity banner */}
       {proximityBanner && (
         <Animated.View style={[styles.banner, bannerStyle]}>
           <Feather name="map-pin" size={13} color={colors.bg} />
           <Text style={styles.bannerText}>
-            Ecoponto proximo — {proximityBanner.name} a {proximityBanner.dist}m
+            Ecoponto proximo - {proximityBanner.name} a {proximityBanner.dist}m
           </Text>
         </Animated.View>
       )}
 
-      {/* Category filter */}
       <View style={styles.filterWrap}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContent}
         >
-          {CATEGORIES.map((cat) => (
+          {categories.map((category) => (
             <Pressable
-              key={cat}
-              style={[styles.pill, activeCategory === cat && styles.pillActive]}
-              onPress={() => setActiveCategory(cat)}
+              key={category}
+              style={[styles.pill, activeCategory === category && styles.pillActive]}
+              onPress={() => setActiveCategory(category)}
             >
-              <Text style={[styles.pillText, activeCategory === cat && styles.pillTextActive]}>
-                {cat}
+              <Text style={[styles.pillText, activeCategory === category && styles.pillTextActive]}>
+                {category}
               </Text>
             </Pressable>
           ))}
         </ScrollView>
       </View>
 
-      {/* Locate user button */}
-      <Pressable style={styles.locateBtn} onPress={locateUser}>
-        <Feather name="navigation" size={18} color={colors.green} />
+      {(loading || errorMessage || ecoPoints.length === 0) && (
+        <View style={styles.statusPanel}>
+          {loading ? <ActivityIndicator color={colors.green} /> : null}
+          {!loading && errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {!loading && !errorMessage && ecoPoints.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhum ecoponto encontrado nesse raio.</Text>
+          ) : null}
+        </View>
+      )}
+
+      <Pressable style={[styles.locateBtn, !userLocation && styles.locateBtnDisabled]} onPress={locateUser}>
+        <Feather name="navigation" size={18} color={userLocation ? colors.green : colors.muted} />
       </Pressable>
 
-      {/* Ecopoint card */}
       {selected && (
         <Animated.View style={[styles.card, cardStyle]}>
           <Pressable style={styles.cardClose} onPress={closeCard}>
@@ -261,12 +271,12 @@ export function MapScreen() {
           <Text style={styles.cardAddr}>{selected.address}</Text>
 
           <View style={styles.tagsRow}>
-            {selected.categories.map((cat) => (
-              <View key={cat} style={styles.tag}>
-                <Text style={styles.tagText}>{cat}</Text>
+            {selected.categories.map((category) => (
+              <View key={category} style={styles.tag}>
+                <Text style={styles.tagText}>{category}</Text>
               </View>
             ))}
-            {userLocation ? (
+            {getDistance(selected) ? (
               <View style={styles.distTag}>
                 <Text style={styles.distTagText}>{getDistance(selected)}</Text>
               </View>
@@ -288,8 +298,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-
-  // marker
   marker: {
     width: 36,
     height: 36,
@@ -305,8 +313,6 @@ const styles = StyleSheet.create({
     borderColor: colors.green,
     transform: [{ scale: 1.2 }],
   },
-
-  // proximity banner
   banner: {
     position: 'absolute',
     top: 52,
@@ -328,8 +334,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-
-  // category filter
   filterWrap: {
     position: 'absolute',
     top: 108,
@@ -361,8 +365,33 @@ const styles = StyleSheet.create({
   pillTextActive: {
     color: colors.green,
   },
-
-  // locate button
+  statusPanel: {
+    position: 'absolute',
+    top: 160,
+    left: 16,
+    right: 16,
+    minHeight: 48,
+    padding: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.error,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   locateBtn: {
     position: 'absolute',
     bottom: 220,
@@ -376,8 +405,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // ecopoint card
+  locateBtnDisabled: {
+    opacity: 0.65,
+  },
   card: {
     position: 'absolute',
     bottom: 0,

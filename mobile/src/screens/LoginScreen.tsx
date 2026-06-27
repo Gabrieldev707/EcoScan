@@ -20,9 +20,10 @@ import { fonts } from '../theme/fonts';
 type Props = StackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
-  const { loginMock } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const shakeX = useRef(new Animated.Value(0)).current;
@@ -52,14 +53,21 @@ export function LoginScreen({ navigation }: Props) {
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
+      setErrorMessage('Informe e-mail e senha.');
       shake();
       return;
     }
+
+    setErrorMessage('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    const name = email.split('@')[0];
-    await loginMock(name, email);
-    setLoading(false);
+    try {
+      await login(email.trim(), password);
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+      shake();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,6 +91,7 @@ export function LoginScreen({ navigation }: Props) {
         <Animated.View style={[styles.card, { transform: [{ translateX: shakeX }] }]}>
           <Text style={styles.title}>Bem-vindo{'\n'}de volta.</Text>
           <Text style={styles.lead}>Entre para continuar reciclando.</Text>
+          {errorMessage ? <Text style={styles.formError}>{errorMessage}</Text> : null}
 
           <EcoInput
             label="E-mail"
@@ -192,6 +201,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+  },
+  formError: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.error,
+    lineHeight: 18,
+    marginBottom: 14,
   },
   footer: {
     flexDirection: 'row',

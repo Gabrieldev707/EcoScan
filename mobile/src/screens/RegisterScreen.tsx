@@ -29,12 +29,13 @@ function validate(name: string, email: string, pwd: string, confirm: string) {
 }
 
 export function RegisterScreen({ navigation }: Props) {
-  const { loginMock } = useAuth();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const errorOpacity = useRef(new Animated.Value(0)).current;
@@ -48,14 +49,21 @@ export function RegisterScreen({ navigation }: Props) {
     const errs = validate(name, email, password, confirm);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      setErrorMessage('');
       showErrors();
       return;
     }
     setErrors({});
+    setErrorMessage('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    await loginMock(name, email);
-    setLoading(false);
+    try {
+      await register(name.trim(), email.trim(), password);
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+      showErrors();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,6 +84,7 @@ export function RegisterScreen({ navigation }: Props) {
         <Animated.View style={[styles.card, { opacity: errors ? 1 : errorOpacity }]}>
           <Text style={styles.title}>Criar{'\n'}conta.</Text>
           <Text style={styles.lead}>Comece a transformar descartes em impacto.</Text>
+          {errorMessage ? <Text style={styles.formError}>{errorMessage}</Text> : null}
 
           <EcoInput
             label="Nome completo"
@@ -194,5 +203,12 @@ const styles = StyleSheet.create({
     color: colors.green,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+  },
+  formError: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.error,
+    lineHeight: 18,
+    marginBottom: 14,
   },
 });

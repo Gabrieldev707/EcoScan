@@ -1,38 +1,28 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   ScrollView,
   Animated,
-  Pressable,
   StyleSheet,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import { scansApi } from '../api/scans';
 import { ImpactCard } from '../components/ImpactCard';
 import { MedalCard } from '../components/MedalCard';
 import { EcoButton } from '../components/EcoButton';
+import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
+import type { Scan } from '../types/scan';
 
 type Props = {
   route: { params: { name: string } };
   onLogout?: () => void;
 };
-
-const MEDALS = [
-  { title: 'Primeiro Scan', icon: 'camera' as const, earned: true },
-  { title: '10 Descartes', icon: 'repeat' as const, earned: true },
-  { title: 'Guardião Verde', icon: 'shield' as const, earned: true },
-  { title: 'Mestre da Reciclagem', icon: 'award' as const, earned: false },
-];
-
-const RECENT_SCANS = [
-  { icon: 'package' as const, name: 'Garrafa PET — 600 ml', date: 'Hoje, 09:42', pts: '+12' },
-  { icon: 'file-text' as const, name: 'Caixa de papelão', date: 'Hoje, 08:11', pts: '+8' },
-  { icon: 'battery-charging' as const, name: 'Pilha AA · 4 un', date: 'Ontem, 17:30', pts: '+30' },
-];
 
 function useEntryAnim(delay: number) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -48,13 +38,29 @@ function useEntryAnim(delay: number) {
   return { opacity, transform: [{ translateY }] };
 }
 
-export function ProfileScreen({ route, onLogout }: Props) {
-  const { name } = route.params;
-  const initials = name
+function formatScanDate(value: string) {
+  const date = new Date(value);
+  return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+}
+
+function getInitials(name: string) {
+  return name
     .split(' ')
     .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? '')
+    .map((word) => word[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+export function ProfileScreen({ route, onLogout }: Props) {
+  const { user, logout } = useAuth();
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const displayName = user?.name || route.params.name;
+  const initials = getInitials(displayName);
 
   const headerAnim = useEntryAnim(0);
   const impactAnim = useEntryAnim(100);
@@ -62,14 +68,41 @@ export function ProfileScreen({ route, onLogout }: Props) {
   const historyAnim = useEntryAnim(300);
   const logoutAnim = useEntryAnim(400);
 
+  const loadScans = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const page = await scansApi.list(1, 20);
+      setScans(page.items);
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadScans();
+    }, [loadScans]),
+  );
+
+  const medals = useMemo(() => ([
+    { title: 'Primeiro Scan', icon: 'camera' as const, earned: scans.length >= 1 },
+    { title: '10 Descartes', icon: 'repeat' as const, earned: scans.length >= 10 },
+    { title: '500 Pontos', icon: 'shield' as const, earned: (user?.points || 0) >= 500 },
+    { title: 'Nivel 5', icon: 'award' as const, earned: (user?.level || 1) >= 5 },
+  ]), [scans.length, user?.level, user?.points]);
+
+  const recyclableCount = scans.filter((scan) => scan.canRecycle).length;
+
   const handleLogout = async () => {
-    await AsyncStorage.clear();
+    await logout();
     onLogout?.();
   };
 
   return (
     <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <Animated.View style={headerAnim}>
         <LinearGradient colors={[colors.bg, colors.surface2]} style={styles.header}>
           <LinearGradient
@@ -78,30 +111,28 @@ export function ProfileScreen({ route, onLogout }: Props) {
           >
             <Text style={styles.initials}>{initials}</Text>
           </LinearGradient>
-          <Text style={styles.userName}>{name}</Text>
+          <Text style={styles.userName}>{displayName}</Text>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Nível 3 — Guardião Verde</Text>
+            <Text style={styles.badgeText}>Nivel {user?.level || 1}</Text>
           </View>
         </LinearGradient>
       </Animated.View>
 
       <View style={styles.body}>
-        {/* Impact Grid */}
         <Animated.View style={impactAnim}>
           <Text style={styles.sectionTitle}>Seu impacto</Text>
           <View style={styles.grid}>
             <View style={styles.row}>
-              <ImpactCard value="47,3 kg" label="Descartados" icon="trash-2" />
-              <ImpactCard value="12,8 kg" label="CO₂ evitado" icon="wind" />
+              <ImpactCard value={String(scans.length)} label="Scans registrados" icon="camera" />
+              <ImpactCard value={String(recyclableCount)} label="Reciclaveis" icon="refresh-cw" />
             </View>
             <View style={styles.row}>
-              <ImpactCard value="340 L" label="Água poupada" icon="droplet" />
-              <ImpactCard value="2.840" label="Pontos acumulados" icon="star" />
+              <ImpactCard value={String(user?.points || 0)} label="Pontos acumulados" icon="star" />
+              <ImpactCard value={String(user?.level || 1)} label="Nivel atual" icon="zap" />
             </View>
           </View>
         </Animated.View>
 
-        {/* Medals */}
         <Animated.View style={medalsAnim}>
           <Text style={styles.sectionTitle}>Conquistas</Text>
           <ScrollView
@@ -109,38 +140,50 @@ export function ProfileScreen({ route, onLogout }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.medals}
           >
-            {MEDALS.map(m => (
-              <MedalCard key={m.title} title={m.title} icon={m.icon} earned={m.earned} />
+            {medals.map((medal) => (
+              <MedalCard key={medal.title} title={medal.title} icon={medal.icon} earned={medal.earned} />
             ))}
           </ScrollView>
         </Animated.View>
 
-        {/* Recent Scans */}
         <Animated.View style={historyAnim}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Últimos scans</Text>
-            <Pressable style={styles.seeAll}>
-              <Text style={styles.seeAllText}>Ver todos</Text>
-              <Feather name="chevron-right" size={14} color={colors.green} />
-            </Pressable>
+            <Text style={styles.sectionTitle}>Ultimos scans</Text>
           </View>
           <View style={styles.scanList}>
-            {RECENT_SCANS.map(s => (
-              <View key={s.name} style={styles.scanRow}>
+            {loading ? (
+              <View style={styles.stateRow}>
+                <ActivityIndicator color={colors.green} />
+              </View>
+            ) : null}
+
+            {errorMessage ? (
+              <View style={styles.stateRow}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
+            {!loading && !errorMessage && scans.length === 0 ? (
+              <View style={styles.stateRow}>
+                <Text style={styles.emptyText}>Nenhum scan registrado ainda.</Text>
+              </View>
+            ) : null}
+
+            {scans.map((scan) => (
+              <View key={scan.id} style={styles.scanRow}>
                 <View style={styles.scanIcon}>
-                  <Feather name={s.icon} size={16} color={colors.green} />
+                  <Feather name="package" size={16} color={colors.green} />
                 </View>
                 <View style={styles.scanInfo}>
-                  <Text style={styles.scanName}>{s.name}</Text>
-                  <Text style={styles.scanDate}>{s.date}</Text>
+                  <Text style={styles.scanName}>{scan.wasteType}</Text>
+                  <Text style={styles.scanDate}>{formatScanDate(scan.createdAt)} · {scan.category}</Text>
                 </View>
-                <Text style={styles.scanPts}>{s.pts}</Text>
+                <Text style={styles.scanPts}>+{scan.points}</Text>
               </View>
             ))}
           </View>
         </Animated.View>
 
-        {/* Logout */}
         <Animated.View style={[logoutAnim, styles.logoutWrap]}>
           <EcoButton label="Sair da conta" onPress={handleLogout} variant="danger" />
         </Animated.View>
@@ -181,6 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: 'capitalize',
     lineHeight: 46,
+    textAlign: 'center',
   },
   badge: {
     backgroundColor: 'rgba(29,255,138,0.12)',
@@ -227,18 +271,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 28,
   },
-  seeAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  seeAllText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: colors.green,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
   scanList: {
     backgroundColor: colors.surface,
     borderRadius: 2,
@@ -283,6 +315,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.green,
     letterSpacing: 0.5,
+  },
+  stateRow: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.error,
+    lineHeight: 18,
+  },
+  emptyText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 18,
   },
   logoutWrap: {
     marginBottom: 40,

@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,35 +15,19 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import { scansApi } from '../api/scans';
 import { ImpactCard } from '../components/ImpactCard';
+import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
+import type { Scan } from '../types/scan';
 
-// ─── mock data ───────────────────────────────────────────────────────────────
-
-const IMPACT_METRICS = [
-  { value: '47,3 kg', label: 'Descartados', icon: 'trash-2' as const },
-  { value: '12,8 kg', label: 'CO2 Evitado', icon: 'wind' as const },
-  { value: '340 L', label: 'Agua Poupada', icon: 'droplet' as const },
-  { value: '2.840', label: 'EcoPoints', icon: 'star' as const },
-];
-
-const WEEKLY_BARS = [
-  { day: 'Seg', scans: 18 },
-  { day: 'Ter', scans: 24 },
-  { day: 'Qua', scans: 12 },
-  { day: 'Qui', scans: 31 },
-  { day: 'Sex', scans: 28 },
-  { day: 'Sab', scans: 22 },
-  { day: 'Dom', scans: 12 },
-];
-
-const MAX_SCANS = Math.max(...WEEKLY_BARS.map((b) => b.scans));
 const BAR_MAX_HEIGHT = 130;
+const WEEK_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
 const GUIDE_CATEGORIES = [
   {
-    name: 'Plastico',
+    name: 'Plástico',
     color: '#ef4444',
     accepted: ['Garrafas PET', 'Potes', 'Embalagens', 'Sacolas limpas'],
     rejected: ['Plastico sujo', 'Isopor', 'Fita adesiva'],
@@ -69,31 +55,68 @@ const GUIDE_CATEGORIES = [
     tip: 'Embale vidros quebrados em jornal antes de descartar.',
   },
   {
+    name: 'Orgânico',
+    color: '#92400e',
+    accepted: ['Restos de comida', 'Cascas', 'Folhas', 'Borras de cafe'],
+    rejected: ['Plastico sujo', 'Vidro', 'Metal'],
+    tip: 'Separe para compostagem quando houver coleta ou estrutura propria.',
+  },
+  {
     name: 'Rejeito',
     color: '#6b7280',
     accepted: ['Fraldas', 'Papel higienico', 'Guardanapos usados'],
-    rejected: ['Nada e reciclavel aqui'],
+    rejected: ['Nada reciclavel aqui'],
     tip: 'Descarte na lixeira cinza. Reduza ao maximo esse volume.',
   },
 ];
 
-// ─── sub-components ──────────────────────────────────────────────────────────
+type Tab = 'impacto' | 'guia';
 
-function AnimatedBar({ scans, index }: { scans: number; index: number }) {
+interface WeeklyBar {
+  day: string;
+  scans: number;
+  key: string;
+}
+
+function getDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildWeeklyBars(scans: Scan[]): WeeklyBar[] {
+  const today = new Date();
+  const bars: WeeklyBar[] = [];
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - offset);
+    const key = getDateKey(date);
+    const scansForDay = scans.filter((scan) => getDateKey(new Date(scan.createdAt)) === key).length;
+
+    bars.push({
+      key,
+      day: WEEK_LABELS[date.getDay()],
+      scans: scansForDay,
+    });
+  }
+
+  return bars;
+}
+
+function AnimatedBar({ bar, index, maxScans }: { bar: WeeklyBar; index: number; maxScans: number }) {
   const height = useSharedValue(0);
-  const targetH = Math.round((scans / MAX_SCANS) * BAR_MAX_HEIGHT);
+  const targetHeight = bar.scans === 0 ? 0 : Math.max(8, Math.round((bar.scans / maxScans) * BAR_MAX_HEIGHT));
 
-  useEffect(() => {
-    height.value = withDelay(index * 60, withTiming(targetH, { duration: 600 }));
-  }, [height, targetH, index]);
+  React.useEffect(() => {
+    height.value = withDelay(index * 60, withTiming(targetHeight, { duration: 600 }));
+  }, [height, targetHeight, index]);
 
   const barStyle = useAnimatedStyle(() => ({ height: height.value }));
 
   return (
     <View style={barStyles.wrap}>
-      <Text style={barStyles.tip}>{scans}</Text>
+      <Text style={barStyles.tip}>{bar.scans}</Text>
       <Animated.View style={[barStyles.bar, barStyle]} />
-      <Text style={barStyles.day}>{WEEKLY_BARS[index].day}</Text>
+      <Text style={barStyles.day}>{bar.day}</Text>
     </View>
   );
 }
@@ -151,18 +174,18 @@ function AccordionItem({ item }: { item: (typeof GUIDE_CATEGORIES)[number] }) {
         <View style={accordionStyles.body}>
           <Text style={accordionStyles.sectionLabel}>Aceitos</Text>
           <View style={accordionStyles.pills}>
-            {item.accepted.map((a) => (
-              <View key={a} style={accordionStyles.pillGreen}>
-                <Text style={accordionStyles.pillGreenText}>{a}</Text>
+            {item.accepted.map((accepted) => (
+              <View key={accepted} style={accordionStyles.pillGreen}>
+                <Text style={accordionStyles.pillGreenText}>{accepted}</Text>
               </View>
             ))}
           </View>
 
           <Text style={accordionStyles.sectionLabel}>Nao aceitos</Text>
           <View style={accordionStyles.pills}>
-            {item.rejected.map((r) => (
-              <View key={r} style={accordionStyles.pillRed}>
-                <Text style={accordionStyles.pillRedText}>{r}</Text>
+            {item.rejected.map((rejected) => (
+              <View key={rejected} style={accordionStyles.pillRed}>
+                <Text style={accordionStyles.pillRedText}>{rejected}</Text>
               </View>
             ))}
           </View>
@@ -253,14 +276,12 @@ const accordionStyles = StyleSheet.create({
   },
 });
 
-// ─── animated progress bar ────────────────────────────────────────────────────
-
-function ProgressBar() {
+function ProgressBar({ progress }: { progress: number }) {
   const width = useSharedValue(0);
 
-  useEffect(() => {
-    width.value = withDelay(200, withTiming(0.84, { duration: 900 }));
-  }, [width]);
+  React.useEffect(() => {
+    width.value = withDelay(200, withTiming(Math.max(0, Math.min(progress, 1)), { duration: 900 }));
+  }, [width, progress]);
 
   const barStyle = useAnimatedStyle(() => ({ width: `${width.value * 100}%` as unknown as number }));
 
@@ -284,14 +305,33 @@ const progressStyles = StyleSheet.create({
   },
 });
 
-// ─── main screen ─────────────────────────────────────────────────────────────
-
-type Tab = 'impacto' | 'guia';
-
 export function DashboardScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('impacto');
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const impactoOpacity = useSharedValue(1);
   const guiaOpacity = useSharedValue(0);
+
+  const loadScans = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const page = await scansApi.list(1, 50);
+      setScans(page.items);
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadScans();
+    }, [loadScans]),
+  );
 
   const switchTab = (tab: Tab) => {
     if (tab === activeTab) return;
@@ -305,29 +345,41 @@ export function DashboardScreen() {
     }
   };
 
+  const weeklyBars = useMemo(() => buildWeeklyBars(scans), [scans]);
+  const maxScans = Math.max(1, ...weeklyBars.map((bar) => bar.scans));
+  const recyclableCount = scans.filter((scan) => scan.canRecycle).length;
+  const totalScanPoints = scans.reduce((sum, scan) => sum + scan.points, 0);
+  const currentLevelStart = ((user?.level || 1) - 1) * 500;
+  const nextLevelPoints = (user?.level || 1) * 500;
+  const levelProgress = ((user?.points || 0) - currentLevelStart) / 500;
+
+  const impactMetrics = [
+    { value: String(scans.length), label: 'Scans registrados', icon: 'camera' as const },
+    { value: String(recyclableCount), label: 'Reciclaveis', icon: 'refresh-cw' as const },
+    { value: String(user?.points || 0), label: 'Pontos totais', icon: 'star' as const },
+    { value: String(totalScanPoints), label: 'Pontos no historico', icon: 'zap' as const },
+  ];
+
   const impactoStyle = useAnimatedStyle(() => ({ opacity: impactoOpacity.value }));
   const guiaStyle = useAnimatedStyle(() => ({ opacity: guiaOpacity.value }));
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Ola, Gabriel</Text>
+        <Text style={styles.greeting}>Ola, {user?.name?.split(' ')[0] || 'usuario'}</Text>
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>Nivel 8</Text>
+          <Text style={styles.levelText}>Nivel {user?.level || 1}</Text>
         </View>
       </View>
 
-      {/* Progress bar */}
       <View style={styles.progressCard}>
         <View style={styles.progressTop}>
-          <Text style={styles.progressLabel}>2.840 / 3.000 pts</Text>
-          <Text style={styles.progressSub}>Proximo nivel: Especialista</Text>
+          <Text style={styles.progressLabel}>{user?.points || 0} / {nextLevelPoints} pts</Text>
+          <Text style={styles.progressSub}>Proximo nivel</Text>
         </View>
-        <ProgressBar />
+        <ProgressBar progress={levelProgress} />
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         <Pressable
           style={[styles.tabBtn, activeTab === 'impacto' && styles.tabBtnActive]}
@@ -347,52 +399,55 @@ export function DashboardScreen() {
         </Pressable>
       </View>
 
-      {/* Tab 1 — Impacto */}
       {activeTab === 'impacto' && (
         <Animated.View style={impactoStyle}>
-          {/* 2x2 metric grid */}
+          {loading ? (
+            <View style={styles.statePanel}>
+              <ActivityIndicator color={colors.green} />
+            </View>
+          ) : null}
+
+          {errorMessage ? (
+            <View style={styles.statePanel}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
           <View style={styles.metricGrid}>
-            {IMPACT_METRICS.map((m) => (
-              <View key={m.label} style={styles.metricCell}>
-                <ImpactCard value={m.value} label={m.label} icon={m.icon} />
+            {impactMetrics.map((metric) => (
+              <View key={metric.label} style={styles.metricCell}>
+                <ImpactCard value={metric.value} label={metric.label} icon={metric.icon} />
               </View>
             ))}
           </View>
 
-          {/* Weekly chart */}
           <View style={styles.panel}>
             <View style={styles.panelHead}>
               <Text style={styles.panelTitle}>Atividade semanal</Text>
-              <Text style={styles.panelSub}>Semana</Text>
+              <Text style={styles.panelSub}>Real</Text>
             </View>
             <View style={styles.chart}>
-              {WEEKLY_BARS.map((bar, i) => (
-                <AnimatedBar key={bar.day} scans={bar.scans} index={i} />
+              {weeklyBars.map((bar, index) => (
+                <AnimatedBar key={bar.key} bar={bar} index={index} maxScans={maxScans} />
               ))}
             </View>
           </View>
 
-          {/* Streak card */}
-          <View style={styles.streakCard}>
-            <View style={styles.streakIcon}>
-              <Feather name="zap" size={20} color={colors.green} />
+          {!loading && scans.length === 0 ? (
+            <View style={styles.statePanel}>
+              <Text style={styles.emptyText}>Nenhum scan registrado ainda.</Text>
             </View>
-            <View style={styles.streakBody}>
-              <Text style={styles.streakLabel}>Sequencia ativa</Text>
-              <Text style={styles.streakValue}>12 dias consecutivos</Text>
-            </View>
-          </View>
+          ) : null}
         </Animated.View>
       )}
 
-      {/* Tab 2 — Guia */}
       {activeTab === 'guia' && (
         <Animated.View style={guiaStyle}>
           <Text style={styles.guiaIntro}>
             Saiba como preparar cada tipo de residuo para o descarte correto.
           </Text>
-          {GUIDE_CATEGORIES.map((cat) => (
-            <AccordionItem key={cat.name} item={cat} />
+          {GUIDE_CATEGORIES.map((category) => (
+            <AccordionItem key={category.name} item={category} />
           ))}
         </Animated.View>
       )}
@@ -400,7 +455,6 @@ export function DashboardScreen() {
   );
 }
 
-// ─── styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -411,15 +465,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-
-  // header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    gap: 12,
   },
   greeting: {
+    flex: 1,
     fontFamily: fonts.display,
     fontSize: 36,
     color: colors.text,
@@ -440,8 +494,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
-
-  // progress
   progressCard: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -453,6 +505,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   progressLabel: {
     fontFamily: fonts.display,
@@ -467,8 +520,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-
-  // tabs
   tabs: {
     flexDirection: 'row',
     gap: 8,
@@ -497,8 +548,6 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: colors.green,
   },
-
-  // impacto tab
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -509,8 +558,6 @@ const styles = StyleSheet.create({
     width: '50%',
     padding: 5,
   },
-
-  // chart
   panel: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -545,45 +592,25 @@ const styles = StyleSheet.create({
     gap: 6,
     height: BAR_MAX_HEIGHT + 40,
   },
-
-  // streak
-  streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+  statePanel: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(29,255,138,0.04)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     padding: 16,
+    marginBottom: 12,
   },
-  streakIcon: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(29,255,138,0.1)',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
+  errorText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.error,
+    lineHeight: 18,
   },
-  streakBody: {
-    gap: 2,
+  emptyText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 18,
   },
-  streakLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: colors.muted,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  streakValue: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.text,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-
-  // guia tab
   guiaIntro: {
     fontFamily: fonts.bodyLight,
     fontSize: 13,
