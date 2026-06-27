@@ -1,160 +1,120 @@
 # EcoScan
 
-<p align="center">
-  <img src="uploads/LogoEcoScan.png" alt="Logo do EcoScan" width="220" />
-</p>
-
-Identificação inteligente de resíduos via câmera e IA. Cada descarte correto gera **EcoPoints**, fortalece rankings locais e ajuda a transformar reciclagem em hábito mensurável.
-
-> Status: Beta · Campina Grande, PB · v1.0.0 · 2026
-
----
-
-## Versão Ativa
-
-O desenvolvimento atual fica em `frontend/` e `mobile/`. A versão estática anterior foi preservada apenas como legado (`/v1/` e arquivos HTML/CSS/JS na raiz) e está listada no `.gitignore` junto com arquivos locais de assistentes, como `CLAUDE.md` e `.claude/`.
-
----
-
-## Módulos
-
-| Módulo | Tecnologia | Status |
-|---|---|---|
-| `frontend/` | React 18 + Vite 5 + TypeScript + GSAP | Landing web v2 |
-| `mobile/` | Expo SDK 54 + React Native 0.81 + TypeScript | App Expo Go com fluxo visual completo |
-| `backend/` | Node.js + Express + Prisma | Ainda não implementado |
-
----
-
-## Como Rodar
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # dist/
-```
-
-> Crie `frontend/.env.local` com `VITE_API_URL=http://localhost:3000/api` quando a API estiver disponível.
-> Por padrão o login web usa mock local. Para apontar para o backend real, adicione também `VITE_USE_MOCK_AUTH=false`.
-
-### Mobile
-
-```bash
-cd mobile
-npm install
-npm start            # Expo Go em LAN
-npm run start:lan    # limpa cache e gera QR com IP da rede
-npm run start:tunnel # use se o iPhone nao acessar o IP da rede
-npm run start:localhost
-npm run web
-npm run android
-npm run ios
-```
-
-Se o Expo Go ficar com fonte, bundle antigo ou QR apontando para `127.0.0.1`:
-
-```bash
-npm run start:lan
-```
-
-No iPhone fisico, o QR deve apontar para o IP do computador na rede, por exemplo `exp://192.168.0.131:8081`. `127.0.0.1` so funciona no proprio computador/simulador.
-
-### Backend
-
-O backend ainda não existe neste repositório. As telas e APIs dos clientes usam mocks ou contratos preparados para futura integração.
-
----
+EcoScan tem, neste estado, uma API Node.js/Express/MongoDB e um app mobile Expo/React Native integrado a ela. O frontend web existente foi mantido no repositorio, mas o fluxo ativo documentado aqui e backend + mobile.
 
 ## Estrutura
 
 ```text
 EcoScan/
-├── frontend/          Landing web em React/Vite com GSAP
-├── mobile/            App React Native/Expo para Expo Go
-├── uploads/           Assets compartilhados, incluindo logo
-├── .env.example       Exemplo de variáveis de ambiente
-├── .gitignore
-└── README.md
+├── backend/   API Express + MongoDB + JWT
+├── mobile/    App Expo/React Native
+├── frontend/  Web existente, nao integrado neste trabalho
+└── package.json
 ```
 
-Arquivos da versão estática anterior ficam fora da estrutura ativa do projeto.
-
----
-
-## Stack Detalhada
-
-### Frontend
-
-- **React 18** + **TypeScript** + **Vite 5**
-- **Tailwind CSS 4** para base utilitária
-- **GSAP 3.12** + **ScrollTrigger** para animações, reveal e hero com vídeo
-- **Axios** com client preparado para token e expiração de sessão
-- Estrutura de landing em seções: `Hero`, `Login`, `Dashboard`, `Guide` e `About`
-
-### Mobile
-
-- **Expo SDK 54** + **React Native 0.81**
-- **React Navigation** com `AuthNavigator` e `AppNavigator` em bottom tabs
-- **Expo Camera**, **Image Picker** e **Location** para o fluxo de scanner
-- **Reanimated** para microinterações e transições do scanner
-- **AsyncStorage** para persistência local de sessão mockada
-- Telas principais: `Scanner`, `Mapa`, `Dashboard`, `Perfil` e `Comunidade`
-
----
-
-## Design Compartilhado
-
-O web e o mobile usam a mesma direção visual:
-
-- Display/títulos: **Bebas Neue**
-- Corpo/UI: **Barlow**
-- Fundo escuro de alto contraste
-- Verde neon como cor de ação
-- Cards e botões compactos, com cantos quase retos
-
-### Paleta
-
-| Token | Hex |
-|---|---|
-| `bg` | `#07090a` |
-| `surface` | `#0c1010` |
-| `surface2` | `#10171a` |
-| `green` | `#1dff8a` |
-| `greenDim` | `#0fcc6b` |
-| `lime` | `#b8ff3c` |
-| `accent` | `#00ffcc` |
-| `text` | `#e8f5ee` |
-| `muted` | `#4a6255` |
-| `dim` | `#7a9387` |
-| `error` | `#ef4444` |
-
----
-
-## Casos de Uso
-
-| UC | Descrição | Estado Atual |
-|---|---|---|
-| UC01 | Autenticação e Perfil | Mock funcional no mobile |
-| UC02 | Scanner com câmera + IA | Fluxo visual com câmera, galeria e resultado mockado |
-| UC03 | Mapa de ecopontos | Tela mobile mockada com lista de pontos |
-| UC04 | Dashboard de impacto | Tela mobile alinhada ao dashboard web |
-| UC05 | Comunidade, ranking e recompensas | Tela mobile mockada |
-
----
-
-## Validação
+## Setup
 
 ```bash
-cd frontend
-npm run build
+npm install
+copy backend\.env.example backend\.env
+npm run dev
 ```
+
+Configure `backend/.env` antes de iniciar a API:
+
+```env
+PORT=3000
+NODE_ENV=development
+MONGODB_URI=mongodb://127.0.0.1:27017/ecoscan
+JWT_SECRET=change-this-secret
+JWT_EXPIRES_IN=7d
+CORS_ORIGIN=http://localhost:8081
+AI_PROVIDER=gemini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=8000
+```
+
+Para popular ecopontos de exemplo:
 
 ```bash
-cd mobile
-npx tsc --noEmit
+npm run seed:ecopoints
 ```
 
-Esses comandos validam o build web e o TypeScript do app mobile, incluindo navegação, telas e componentes.
+## Mobile
+
+O app usa React Navigation, `AuthContext`, Axios e AsyncStorage.
+
+Base URL da API:
+
+- `EXPO_PUBLIC_API_URL` sobrescreve qualquer default.
+- Em dev, sem override, o app deriva o host do Expo.
+- Android emulator usa `10.0.2.2`.
+- iOS simulator usa `localhost`.
+- Fora de dev, `EXPO_PUBLIC_API_URL` e obrigatorio.
+
+O scanner nao envia imagem/base64. Enquanto nao houver IA real, ele exige `wasteType` e `city` explicitamente e envia:
+
+```json
+{
+  "wasteType": "Garrafa PET",
+  "city": "Campina Grande, PB"
+}
+```
+
+A classificacao acontece somente no backend. Se `AI_PROVIDER=gemini` e `GEMINI_API_KEY` estiverem configurados, o backend chama Gemini para classificar o texto. Se a chave estiver ausente, a chamada falhar ou a resposta vier invalida, o backend usa fallback local por palavras-chave.
+
+## Endpoints
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `POST /api/scans`
+- `GET /api/scans?page=1&limit=20`
+- `GET /api/ecopoints?lat=-7.23&lng=-35.88&radius=5`
+
+Rotas protegidas exigem:
+
+```http
+Authorization: Bearer <token>
+```
+
+Erros da API seguem:
+
+```json
+{
+  "message": "string",
+  "errors": []
+}
+```
+
+## Scripts
+
+- `npm run dev`: roda backend e mobile juntos.
+- `npm run typecheck`: valida TypeScript do mobile.
+- `npm run seed:ecopoints`: insere/atualiza ecopontos de exemplo.
+
+## Teste com curl
+
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Aluno Eco\",\"email\":\"aluno@example.com\",\"password\":\"secret123\"}"
+```
+
+Use o token retornado:
+
+```bash
+curl -X POST http://localhost:3000/api/scans \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TOKEN_AQUI" \
+  -d "{\"wasteType\":\"Garrafa PET\",\"city\":\"Campina Grande, PB\"}"
+```
+
+## Limitações atuais
+
+- A classificacao de residuos usa Gemini quando configurado e fallback local quando nao configurado ou indisponivel.
+- Nao ha IA de imagem implementada.
+- Ecopontos dependem de dados no MongoDB; use o seed opcional para dados iniciais.
+- O frontend web foi preservado, mas nao foi integrado nesta etapa.
