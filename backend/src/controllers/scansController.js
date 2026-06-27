@@ -1,6 +1,6 @@
 const Scan = require('../models/Scan');
 const User = require('../models/User');
-const { classifyWaste } = require('../services/wasteClassifier');
+const aiClassifierService = require('../services/aiClassifierService');
 
 function calculateLevel(points) {
   return Math.floor(points / 500) + 1;
@@ -15,6 +15,8 @@ function toScanResponse(scan) {
     canRecycle: scan.canRecycle,
     points: scan.points,
     disposalGuide: scan.disposalGuide,
+    classificationSource: scan.classificationSource,
+    confidence: scan.confidence,
     city: scan.city,
     createdAt: scan.createdAt.toISOString(),
   };
@@ -23,7 +25,7 @@ function toScanResponse(scan) {
 async function createScan(req, res, next) {
   try {
     const { wasteType, city } = req.validated.body;
-    const classification = classifyWaste({ wasteType, city });
+    const classification = await aiClassifierService.classifyWaste({ wasteType, city });
 
     const scan = await Scan.create({
       user: req.user._id,
@@ -34,6 +36,8 @@ async function createScan(req, res, next) {
       canRecycle: classification.canRecycle,
       points: classification.points,
       disposalGuide: classification.disposalGuide,
+      classificationSource: classification.source,
+      confidence: classification.confidence,
     });
 
     const updatedUser = await User.findById(req.user._id).select('_id points level');

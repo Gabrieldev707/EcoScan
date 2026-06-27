@@ -39,6 +39,19 @@ const scanSchema = new mongoose.Schema(
       required: true,
       maxlength: 500,
     },
+    classificationSource: {
+      type: String,
+      enum: ['gemini', 'groq', 'fallback'],
+      required: true,
+      default: 'fallback',
+    },
+    confidence: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 1,
+      default: 0,
+    },
     city: {
       type: String,
       required: true,
