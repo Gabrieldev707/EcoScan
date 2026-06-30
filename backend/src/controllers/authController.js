@@ -79,8 +79,22 @@ function me(req, res) {
   res.json({ user: toAuthUser(req.user) });
 }
 
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.validated.body;
+    await User.exists({ email });
+
+    res.json({
+      message: 'Se esse e-mail estiver cadastrado, enviaremos instrucoes para recuperar a senha.',
+      errors: [],
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 function logout(_req, res) {
   res.json({ message: 'Logged out successfully', errors: [] });
 }
 
-module.exports = { register, login, me, logout, toAuthUser };
+module.exports = { register, login, me, forgotPassword, logout, toAuthUser };

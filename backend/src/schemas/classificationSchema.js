@@ -22,12 +22,16 @@ const CAN_RECYCLE_BY_CATEGORY = {
 
 const classificationResultSchema = z
   .object({
+    isValidWaste: z.boolean().default(true),
     wasteType: z.string().trim().min(2).max(120),
+    identifiedItem: z.string().trim().min(2).max(120).optional(),
+    material: z.string().trim().min(2).max(80).optional(),
     category: z.enum(CATEGORIES),
     binColor: z.enum(['Vermelho', 'Azul', 'Amarelo', 'Verde', 'Marrom', 'Cinza']),
     canRecycle: z.boolean(),
     points: z.number().int().min(0).max(100),
-    disposalGuide: z.string().trim().min(10).max(500),
+    disposalGuide: z.string().trim().min(10).max(700),
+    reason: z.string().trim().min(8).max(500).optional(),
     confidence: z.number().min(0).max(1),
   })
   .strict()
@@ -38,6 +42,10 @@ const classificationResultSchema = z
   .refine((value) => CAN_RECYCLE_BY_CATEGORY[value.category] === value.canRecycle, {
     message: 'canRecycle does not match category',
     path: ['canRecycle'],
+  })
+  .refine((value) => value.isValidWaste || value.points === 0, {
+    message: 'invalid waste cannot grant points',
+    path: ['points'],
   });
 
 module.exports = {

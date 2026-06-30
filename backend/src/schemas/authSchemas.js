@@ -19,4 +19,10 @@ const loginSchema = z
   })
   .strict();
 
-module.exports = { registerSchema, loginSchema };
+const forgotPasswordSchema = z
+  .object({
+    email,
+  })
+  .strict();
+
+module.exports = { registerSchema, loginSchema, forgotPasswordSchema };

@@ -7,9 +7,10 @@
     "mobile"
   ],
   "scripts": {
-    "dev": "concurrently -n backend,mobile -c blue,green \"npm run dev --workspace backend\" \"npm run start --workspace mobile\"",
+    "dev": "concurrently --raw \"npm run dev --workspace backend\" \"npm run start:lan --workspace mobile\"",
     "typecheck": "npm run typecheck --workspace mobile",
-    "seed:ecopoints": "npm run seed:ecopoints --workspace backend"
+    "seed:ecopoints": "npm run seed:ecopoints --workspace backend",
+    "dev:tunnel": "concurrently --raw \"npm run dev --workspace backend\" \"npm run start:tunnel --workspace mobile\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

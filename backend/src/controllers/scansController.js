@@ -10,32 +10,55 @@ function toScanResponse(scan) {
   return {
     id: scan._id.toString(),
     wasteType: scan.wasteType,
+    identifiedItem: scan.identifiedItem,
+    material: scan.material,
     category: scan.category,
     binColor: scan.binColor,
     canRecycle: scan.canRecycle,
     points: scan.points,
     disposalGuide: scan.disposalGuide,
+    reason: scan.reason,
     classificationSource: scan.classificationSource,
     confidence: scan.confidence,
     city: scan.city,
+    lat: scan.lat,
+    lng: scan.lng,
+    imageProvided: scan.imageProvided,
     createdAt: scan.createdAt.toISOString(),
   };
 }
 
 async function createScan(req, res, next) {
   try {
-    const { wasteType, city } = req.validated.body;
-    const classification = await aiClassifierService.classifyWaste({ wasteType, city });
+    const { wasteType, city, lat, lng, image } = req.validated.body;
+    const classification = await aiClassifierService.classifyWaste({ wasteType, city, lat, lng, image });
+
+    if (!classification.isValidWaste) {
+      const error = new Error(
+        classification.reason || 'Nao foi possivel confirmar esse residuo. Tente outra foto ou descricao.',
+      );
+      error.statusCode = 422;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const finalWasteType = classification.wasteType || classification.identifiedItem || wasteType || 'Residuo identificado pela imagem';
 
     const scan = await Scan.create({
       user: req.user._id,
-      wasteType,
+      wasteType: finalWasteType,
+      identifiedItem: classification.identifiedItem || finalWasteType,
+      material: classification.material,
       city,
+      lat,
+      lng,
+      imageProvided: Boolean(image?.base64),
       category: classification.category,
       binColor: classification.binColor,
       canRecycle: classification.canRecycle,
       points: classification.points,
       disposalGuide: classification.disposalGuide,
+      reason: classification.reason,
       classificationSource: classification.source,
       confidence: classification.confidence,
     });

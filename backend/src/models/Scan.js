@@ -16,6 +16,16 @@ const scanSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    identifiedItem: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+    },
+    material: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+    },
     category: {
       type: String,
       enum: CATEGORIES,
@@ -37,6 +47,11 @@ const scanSchema = new mongoose.Schema(
     disposalGuide: {
       type: String,
       required: true,
+      maxlength: 700,
+    },
+    reason: {
+      type: String,
+      trim: true,
       maxlength: 500,
     },
     classificationSource: {
@@ -58,10 +73,25 @@ const scanSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    lat: {
+      type: Number,
+      min: -90,
+      max: 90,
+    },
+    lng: {
+      type: Number,
+      min: -180,
+      max: 180,
+    },
+    imageProvided: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
 
 scanSchema.index({ user: 1, createdAt: -1 });
+scanSchema.index({ lat: 1, lng: 1 });
 
 module.exports = mongoose.model('Scan', scanSchema);

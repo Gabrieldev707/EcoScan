@@ -1,6 +1,9 @@
 const path = require('path');
 
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({
+  path: path.resolve(__dirname, '../.env'),
+  override: process.env.NODE_ENV !== 'production',
+});
 
 const { connectDB } = require('./config/db');
 const app = require('./app');
@@ -14,11 +17,12 @@ for (const key of REQUIRED_ENV) {
 }
 
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || '0.0.0.0';
 
 connectDB(process.env.MONGODB_URI)
   .then(() => {
-    app.listen(port, () => {
-      console.log(`EcoScan API running on port ${port}`);
+    app.listen(port, host, () => {
+      console.log(`EcoScan API running on http://${host}:${port}`);
     });
   })
   .catch((error) => {
