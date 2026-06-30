@@ -1,10 +1,18 @@
+import { GitBranch } from 'lucide-react';
+
+const GITHUB_URL = 'https://github.com/Gabrieldev707/EcoScan.git';
+const LINKEDIN_URL = 'https://www.linkedin.com/in/gabriel-azevedo-6a2568230/';
+
 export default function Footer() {
   return (
     <footer>
       <div className="foot-inner">
         <div className="foot-col">
           <div className="foot-brand"><span className="dot" />EcoScan</div>
-          <p className="foot-tag">Identificação inteligente de resíduos. Tecnologia acessível no bolso de qualquer pessoa.</p>
+          <a className="github-btn" href={GITHUB_URL} target="_blank" rel="noreferrer">
+            <GitBranch size={15} />
+            GitHub
+          </a>
         </div>
 
         <div className="foot-col">
@@ -28,16 +36,22 @@ export default function Footer() {
           <h5>Contato</h5>
           <a href="mailto:contato@ecoscan.app">contato@ecoscan.app</a>
           <a href="#hero">Instagram</a>
-          <a href="#hero">LinkedIn</a>
-          <a href="#hero">GitHub</a>
+          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">LinkedIn</a>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
         </div>
+      </div>
+
+      <div className="dev-credit">
+        <span>Desenvolvido por:</span>
+        <strong>Gabriel Azevedo</strong>
+        <strong>Mateus Regis</strong>
+        <strong>Carlos Adrians</strong>
+        <strong>Miguel Menezes</strong>
       </div>
 
       <div className="foot-bottom">
         <div>Unifacisa · Campina Grande, PB · 2025</div>
         <div className="right">
-          <span>v 1.0.0</span>
-          <span>Status · Operacional</span>
           <span>© EcoScan</span>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { authApi, type AuthPayload } from '@/api/auth';
-import { STORAGE_KEYS } from '@/utils/constants';
+import { STORAGE_KEYS, USE_MOCK_AUTH } from '@/utils/constants';
 
 type User = AuthPayload['user'];
 
@@ -45,22 +45,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(payload.user);
   }, []);
 
-  const login = useCallback(async (email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 800));
-    const mockUser = { id: '1', name: email.split('@')[0], email, level: 3, points: 2840 };
-    const mockToken = 'mock-token-ecoscan';
-    persist({ token: mockToken, user: mockUser });
+  const login = useCallback(async (email: string, password: string) => {
+    if (!USE_MOCK_AUTH) {
+      persist(await authApi.login(email, password));
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const cleanEmail = email.trim();
+    const mockUser = {
+      id: '1',
+      name: cleanEmail.split('@')[0] || 'EcoUser',
+      email: cleanEmail,
+      level: 7,
+      points: 1760,
+    };
+    persist({ token: 'mock-token-ecoscan', user: mockUser });
   }, [persist]);
 
-  const register = useCallback(async (name: string, email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 900));
-    const mockUser = { id: '1', name, email, level: 1, points: 0 };
-    const mockToken = 'mock-token-ecoscan';
-    persist({ token: mockToken, user: mockUser });
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    if (!USE_MOCK_AUTH) {
+      persist(await authApi.register(name, email, password));
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    const mockUser = { id: '1', name: name.trim(), email: email.trim(), level: 1, points: 120 };
+    persist({ token: 'mock-token-ecoscan', user: mockUser });
   }, [persist]);
 
   const logout = useCallback(() => {
-    authApi.logout().catch(() => {});
+    if (!USE_MOCK_AUTH) authApi.logout().catch(() => {});
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER);
     setToken(null);

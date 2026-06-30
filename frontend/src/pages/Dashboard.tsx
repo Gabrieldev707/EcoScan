@@ -25,6 +25,7 @@ import {
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { dashboardMetrics, recentScans, weeklyActivity } from '@/data/site';
+import { useAuth } from '@/hooks/useAuth';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -48,8 +49,26 @@ const scanIcons = [Wine, Newspaper, BatteryWarning, Cpu, Apple];
 export default function Dashboard() {
   const chartRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
   const [activeMenu, setActiveMenu] = useState(0);
   const [activeRange, setActiveRange] = useState('Semana');
+  const dashboardUser = user ?? {
+    name: 'Júlia Santos',
+    email: 'julia@ecoscan.app',
+    level: 7,
+    points: 1760,
+  };
+  const firstName = dashboardUser.name.split(' ')[0] || dashboardUser.name;
+  const initials = dashboardUser.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'EC';
+  const nextLevelTarget = dashboardUser.level <= 1 ? 500 : 2000;
+  const nextLevelName = dashboardUser.level <= 1 ? 'Exploradora' : 'Defensora';
+  const remainingPoints = Math.max(0, nextLevelTarget - dashboardUser.points);
+  const progressPercent = Math.min(100, Math.round((dashboardUser.points / nextLevelTarget) * 100));
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -83,7 +102,7 @@ export default function Dashboard() {
       onEnter: () => gsap.to(fill, { width: fill.dataset.target, duration: 1.3, ease: 'power3.out' }),
     });
     return () => trigger.kill();
-  }, []);
+  }, [progressPercent]);
 
   return (
     <section id="dashboard" data-screen-label="03 Dashboard">
@@ -124,9 +143,9 @@ export default function Dashboard() {
             </div>
 
             <div className="sb-foot">
-              <div className="avatar">JS</div>
+              <div className="avatar">{initials}</div>
               <div>
-                <div style={{ color: 'var(--text)', fontWeight: 500 }}>Júlia Santos</div>
+                <div style={{ color: 'var(--text)', fontWeight: 500 }}>{dashboardUser.name}</div>
                 <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em', marginTop: 2 }}>
                   Configurações
                 </div>
@@ -149,10 +168,10 @@ export default function Dashboard() {
                 </button>
                 <button className="icon-btn" type="button"><Settings size={16} /></button>
                 <div className="user-chip">
-                  <div className="avatar">JS</div>
+                  <div className="avatar">{initials}</div>
                   <div>
-                    <div className="nm">Júlia Santos</div>
-                    <div className="lvl">Nível 7 · Guardiã</div>
+                    <div className="nm">{dashboardUser.name}</div>
+                    <div className="lvl">Nível {dashboardUser.level} · Guardiã</div>
                   </div>
                 </div>
               </div>
@@ -160,18 +179,25 @@ export default function Dashboard() {
 
             <div className="greet">
               <div>
-                <h2>Olá, <em>Júlia</em>.</h2>
-                <p>Você está a 240 pontos de subir para o Nível 8 — Defensora.</p>
+                <h2>Olá, <em>{firstName}</em>.</h2>
+                <p>
+                  {remainingPoints > 0
+                    ? `Você está a ${remainingPoints.toLocaleString('pt-BR')} pontos de subir para o Nível ${dashboardUser.level + 1} — ${nextLevelName}.`
+                    : `Você já pode subir para o Nível ${dashboardUser.level + 1} — ${nextLevelName}.`}
+                </p>
               </div>
               <div className="level-pill"><Flame size={14} /> Sequência de 12 dias</div>
             </div>
 
             <div className="progress-card">
               <div className="progress-row">
-                <div className="lbl">Progresso para <b>Nível 8 · Defensora</b></div>
-                <div className="pts">1.760<span className="denom"> / 2.000</span></div>
+                <div className="lbl">Progresso para <b>Nível {dashboardUser.level + 1} · {nextLevelName}</b></div>
+                <div className="pts">
+                  {dashboardUser.points.toLocaleString('pt-BR')}
+                  <span className="denom"> / {nextLevelTarget.toLocaleString('pt-BR')}</span>
+                </div>
               </div>
-              <div className="bar"><div ref={fillRef} className="fill" data-target="88%" /></div>
+              <div className="bar"><div ref={fillRef} className="fill" data-target={`${progressPercent}%`} /></div>
             </div>
 
             <div className="metric-grid">

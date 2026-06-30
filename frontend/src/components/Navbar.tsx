@@ -1,4 +1,5 @@
 import { ArrowUpRight } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const LINKS = [
   { href: '#hero', label: 'Início' },
@@ -9,6 +10,14 @@ const LINKS = [
 ];
 
 export function Navbar() {
+  const { user } = useAuth();
+  const initials = user?.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
   return (
     <nav className="nav">
       <div className="nav-inner">
@@ -25,8 +34,9 @@ export function Navbar() {
           ))}
         </div>
 
-        <a href="#login" className="nav-cta">
-          Entrar <ArrowUpRight size={13} />
+        <a href={user ? '#dashboard' : '#login'} className="nav-cta">
+          {user && initials ? <span className="nav-user">{initials}</span> : null}
+          {user ? 'Painel' : 'Entrar'} <ArrowUpRight size={13} />
         </a>
       </div>
     </nav>

@@ -14,21 +14,9 @@ const BADGES = [
 export default function Hero() {
   const wrapRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const eyebrowRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const badgesRef = useRef<HTMLDivElement>(null);
-  const underlineRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const title = titleRef.current;
-    if (!title) return;
-    title.innerHTML = 'EcoScan'
-      .split('')
-      .map((character) => `<span class="ltr" style="opacity:0;display:inline-block;transform:translateY(80px)">${character}</span>`)
-      .join('');
-  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -51,14 +39,10 @@ export default function Hero() {
     else video.addEventListener('loadeddata', onReady, { once: true });
     ensurePlay();
 
-    const letters = wrap.querySelectorAll<HTMLElement>('.ltr');
     const timeline = gsap.timeline({ paused: true });
     timeline
-      .to(eyebrowRef.current, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0)
-      .to(letters, { y: 0, opacity: 1, duration: 0.7, stagger: 0.06, ease: 'power3.out' }, 0.05)
-      .to(underlineRef.current, { scaleX: 1, duration: 0.9, ease: 'power3.out' }, 0.35)
-      .to(subRef.current, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, '-=0.3')
-      .to(ctaRef.current, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, '-=0.4')
+      .to(subRef.current, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0)
+      .to(ctaRef.current, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.15)
       .to(badgesRef.current, { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out' }, '-=0.4');
 
     const trigger = ScrollTrigger.create({
@@ -84,7 +68,7 @@ export default function Hero() {
 
     return () => {
       trigger.kill();
-      gsap.killTweensOf([letters, eyebrowRef.current, subRef.current, ctaRef.current, badgesRef.current]);
+      gsap.killTweensOf([subRef.current, ctaRef.current, badgesRef.current]);
     };
   }, []);
 
@@ -102,18 +86,8 @@ export default function Hero() {
           <div className="row"><b>03</b> · Impactar</div>
         </div>
 
-        <div className="hero-meta-r">
-          <div className="live"><span className="blink" /> Beta · Campina Grande</div>
-          <div style={{ marginTop: 10 }}>v 1.0.0 · 2026</div>
-        </div>
-
         <div className="hero-content">
-          <div ref={eyebrowRef} className="hero-eyebrow" style={{ opacity: 0, transform: 'translateY(16px)' }}>
-            <span className="pill-dot" /> Identificação inteligente de resíduos
-          </div>
-
-          <h1 ref={titleRef} className="hero-title" />
-          <span ref={underlineRef} className="hero-underline" style={{ transform: 'scaleX(0)', transformOrigin: 'left' }} />
+          <h1 className="hero-title">EcoScan</h1>
 
           <p ref={subRef} className="hero-sub" style={{ opacity: 0, transform: 'translateY(16px)' }}>
             Aponte a câmera. Descubra a destinação correta em segundos. Transforme cada descarte em{' '}
