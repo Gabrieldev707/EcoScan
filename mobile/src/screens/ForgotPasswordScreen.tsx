@@ -1,48 +1,34 @@
 import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
+  Animated,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { AuthStackParamList } from '../navigation/AuthNavigator';
-import { useAuth } from '../hooks/useAuth';
-import { EcoInput } from '../components/EcoInput';
+import { authApi } from '../api/auth';
 import { EcoButton } from '../components/EcoButton';
+import { EcoInput } from '../components/EcoInput';
+import type { AuthStackParamList } from '../navigation/AuthNavigator';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 
-type Props = StackScreenProps<AuthStackParamList, 'Login'>;
+type Props = StackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
-export function LoginScreen({ navigation }: Props) {
-  const { login } = useAuth();
+export function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const shakeX = useRef(new Animated.Value(0)).current;
-  const pulseScale = useRef(new Animated.Value(1)).current;
-
-  // Pulsing dot
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseScale, { toValue: 1.4, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseScale, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [pulseScale]);
 
   const shake = () => {
     Animated.sequence([
-      Animated.timing(shakeX, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -10, duration: 60, useNativeDriver: true }),
       Animated.timing(shakeX, { toValue: 10, duration: 60, useNativeDriver: true }),
       Animated.timing(shakeX, { toValue: -10, duration: 60, useNativeDriver: true }),
       Animated.timing(shakeX, { toValue: 6, duration: 60, useNativeDriver: true }),
@@ -51,17 +37,23 @@ export function LoginScreen({ navigation }: Props) {
     ]).start();
   };
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      setErrorMessage('Informe e-mail e senha.');
+  const handleSubmit = async () => {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setErrorMessage('Informe seu e-mail.');
+      setSuccessMessage('');
       shake();
       return;
     }
 
-    setErrorMessage('');
     setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
     try {
-      await login(email.trim(), password);
+      const response = await authApi.forgotPassword(trimmedEmail);
+      setSuccessMessage(response.message);
     } catch (error) {
       setErrorMessage((error as Error).message);
       shake();
@@ -80,18 +72,23 @@ export function LoginScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo */}
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={18} color={colors.green} />
+        </Pressable>
+
         <View style={styles.logoRow}>
           <Text style={styles.logoText}>EcoScan</Text>
-          <Animated.View style={[styles.dot, { transform: [{ scale: pulseScale }] }]} />
+          <View style={styles.dot} />
         </View>
-        <Text style={styles.sub}>Identificação Inteligente de Resíduos</Text>
+        <Text style={styles.sub}>Recuperacao de acesso</Text>
 
-        {/* Card */}
         <Animated.View style={[styles.card, { transform: [{ translateX: shakeX }] }]}>
-          <Text style={styles.title}>Bem-vindo{'\n'}de volta.</Text>
-          <Text style={styles.lead}>Entre para continuar reciclando.</Text>
+          <Text style={styles.title}>Esqueceu</Text>
+          <Text style={[styles.title, styles.titleSecond]}>a senha?</Text>
+          <Text style={styles.lead}>Digite o e-mail da conta para receber as instrucoes.</Text>
+
           {errorMessage ? <Text style={styles.formError}>{errorMessage}</Text> : null}
+          {successMessage ? <Text style={styles.formSuccess}>{successMessage}</Text> : null}
 
           <EcoInput
             label="E-mail"
@@ -100,29 +97,11 @@ export function LoginScreen({ navigation }: Props) {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-          />
-          <EcoInput
-            label="Senha"
-            icon="lock"
-            value={password}
-            onChangeText={setPassword}
-            isPassword
+            autoCorrect={false}
           />
 
-          <EcoButton label="Entrar na conta" onPress={handleLogin} loading={loading} />
-
-          <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
-            <Text style={styles.forgot}>Esqueci a senha</Text>
-          </Pressable>
+          <EcoButton label="Enviar instrucoes" onPress={handleSubmit} loading={loading} />
         </Animated.View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Não tem conta? </Text>
-          <Pressable onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.footerLink}>Criar conta</Text>
-          </Pressable>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -136,8 +115,19 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 80,
+    paddingTop: 72,
     paddingBottom: 40,
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+    backgroundColor: colors.surface,
   },
   logoRow: {
     flexDirection: 'row',
@@ -174,12 +164,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: 56,
+    fontSize: 50,
     color: colors.text,
-    marginBottom: 8,
-    lineHeight: 52,
+    lineHeight: 48,
     letterSpacing: 0.2,
     textTransform: 'uppercase',
+  },
+  titleSecond: {
+    marginBottom: 8,
   },
   lead: {
     fontFamily: fonts.bodyLight,
@@ -188,20 +180,6 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     lineHeight: 20,
   },
-  forgotWrap: {
-    alignSelf: 'center',
-    marginTop: 16,
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.muted,
-  },
-  forgot: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    color: colors.muted,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
   formError: {
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
@@ -209,23 +187,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 14,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 32,
-  },
-  footerText: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.muted,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  footerLink: {
-    fontFamily: fonts.bodySemiBold,
+  formSuccess: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     color: colors.green,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    lineHeight: 18,
+    marginBottom: 14,
   },
 });

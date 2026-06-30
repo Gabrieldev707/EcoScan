@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeModules, Platform } from 'react-native';
 
 declare const process: {
-  env?: Record<string, string | undefined>;
+  env: Record<string, string | undefined>;
 };
 
 export const AUTH_STORAGE_KEYS = {
@@ -29,8 +29,7 @@ function getMetroHost() {
 }
 
 function getDefaultDevApiUrl() {
-  const env = process.env || {};
-  const port = env.EXPO_PUBLIC_API_PORT || '3000';
+  const port = process.env.EXPO_PUBLIC_API_PORT || '3000';
   const metroHost = getMetroHost();
 
   if (metroHost && metroHost !== 'localhost' && metroHost !== '127.0.0.1') {
@@ -49,10 +48,8 @@ function getDefaultDevApiUrl() {
 }
 
 function resolveBaseURL() {
-  const env = process.env || {};
-
-  if (env.EXPO_PUBLIC_API_URL) {
-    return normalizeApiUrl(env.EXPO_PUBLIC_API_URL);
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
   }
 
   if (__DEV__) {
@@ -62,8 +59,14 @@ function resolveBaseURL() {
   throw new Error('EXPO_PUBLIC_API_URL is required outside development');
 }
 
+const baseURL = resolveBaseURL();
+
+if (__DEV__) {
+  console.info(`EcoScan API base URL: ${baseURL}`);
+}
+
 export const api = axios.create({
-  baseURL: resolveBaseURL(),
+  baseURL,
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -82,7 +85,12 @@ api.interceptors.response.use(
       unauthorizedHandler?.();
     }
 
-    const message = error.response?.data?.message ?? 'Erro de conexao.';
+    const requestUrl = `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`;
+    const networkMessage =
+      __DEV__ && !error.response
+        ? `Erro de conexao (${error.code ?? error.message ?? 'sem resposta'}) em ${requestUrl || 'URL desconhecida'}.`
+        : 'Erro de conexao.';
+    const message = error.response?.data?.message ?? networkMessage;
     const apiError = new Error(message) as Error & { status?: number; errors?: unknown[] };
     apiError.status = error.response?.status;
     apiError.errors = error.response?.data?.errors ?? [];

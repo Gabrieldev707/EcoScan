@@ -26,7 +26,7 @@ import { scansApi } from '../api/scans';
 import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
-import type { Scan } from '../types/scan';
+import type { Scan, ScanImagePayload } from '../types/scan';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const FRAME = SW * 0.7;
@@ -40,7 +40,20 @@ const BIN_HEX_BY_COLOR: Record<string, string> = {
   Cinza: '#6b7280',
 };
 
+const CLASSIFIER_LABELS = {
+  gemini: 'Gemini ativo',
+  groq: 'Groq ativo',
+  fallback: 'Modo local',
+} as const;
+
+type Coordinates = { lat: number; lng: number };
+
 type State = 'idle' | 'camera' | 'loading' | 'result';
+
+function getSupportedMimeType(value?: string): ScanImagePayload['mimeType'] {
+  if (value === 'image/png' || value === 'image/webp') return value;
+  return 'image/jpeg';
+}
 
 function PulseButton({ onPress }: { onPress: () => void }) {
   const scale = useSharedValue(1);
@@ -121,7 +134,7 @@ function LoadingOverlay({ uri }: { uri?: string }) {
         <ActivityIndicator size="large" color={colors.green} />
         <Text style={styles.loadingTitle}>Registrando descarte...</Text>
         <Animated.Text style={[styles.loadingSub, pulseStyle]}>
-          Classificacao temporaria por palavras-chave
+          IA analisando imagem, residuo e guia de descarte
         </Animated.Text>
       </View>
     </View>
@@ -139,6 +152,10 @@ function ResultCard({
 }) {
   const cardY = useSharedValue(SH);
   const binHex = BIN_HEX_BY_COLOR[result.binColor] || colors.green;
+  const sourceLabel = CLASSIFIER_LABELS[result.classificationSource] || 'IA ativa';
+  const confidenceLabel = Math.round(result.confidence * 100) + '%';
+  const itemLabel = result.identifiedItem || result.wasteType;
+  const materialLabel = result.material || 'nao informado';
 
   useEffect(() => {
     cardY.value = withSpring(0, { damping: 18, stiffness: 120 });
@@ -157,7 +174,24 @@ function ResultCard({
       </View>
 
       <Animated.View style={[styles.card, cardStyle]}>
-        <Text style={styles.cardItem}>{result.wasteType}</Text>
+        <Text style={styles.cardItem} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.72}>
+          {itemLabel}
+        </Text>
+        <View style={styles.sourceRow}>
+          <Feather name={result.imageProvided ? 'image' : 'cpu'} size={13} color={colors.accent} />
+          <Text style={styles.sourceText}>{sourceLabel} / confianca {confidenceLabel}</Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <View style={styles.infoChip}>
+            <Text style={styles.infoLabel}>Material</Text>
+            <Text style={styles.infoValue}>{materialLabel}</Text>
+          </View>
+          <View style={styles.infoChip}>
+            <Text style={styles.infoLabel}>Foto</Text>
+            <Text style={styles.infoValue}>{result.imageProvided ? 'analisada' : 'texto'}</Text>
+          </View>
+        </View>
 
         <View style={styles.binRow}>
           <View style={[styles.binIcon, { borderColor: binHex }]}>
@@ -168,6 +202,8 @@ function ResultCard({
             <Text style={styles.cardInstr}>{result.disposalGuide}</Text>
           </View>
         </View>
+
+        {result.reason ? <Text style={styles.reasonText}>{result.reason}</Text> : null}
 
         <View style={styles.ptsRow}>
           <Feather name="zap" size={18} color={colors.green} />
@@ -199,12 +235,21 @@ export function ScannerScreen() {
   const { refreshUser } = useAuth();
   const [state, setState] = useState<State>('idle');
   const [previewUri, setPreviewUri] = useState<string | undefined>();
+  const [imageBase64, setImageBase64] = useState<string | undefined>();
+  const [imageMimeType, setImageMimeType] = useState<ScanImagePayload['mimeType']>('image/jpeg');
   const [wasteType, setWasteType] = useState('');
   const [city, setCity] = useState('');
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [result, setResult] = useState<Scan | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [detectingCity, setDetectingCity] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+
+  const clearImage = useCallback(() => {
+    setPreviewUri(undefined);
+    setImageBase64(undefined);
+    setImageMimeType('image/jpeg');
+  }, []);
 
   const detectCity = useCallback(async () => {
     setDetectingCity(true);
@@ -221,11 +266,13 @@ export function ScannerScreen() {
       const region = geo?.region;
       const label = [cityName, region].filter(Boolean).join(', ');
 
+      setCoordinates({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+
       if (label) {
         setCity(label);
         setErrorMessage('');
       } else {
-        setErrorMessage('Nao foi possivel detectar a cidade.');
+        setErrorMessage('Coordenadas detectadas. Confira a cidade manualmente.');
       }
     } catch {
       setErrorMessage('Nao foi possivel detectar a cidade.');
@@ -243,27 +290,48 @@ export function ScannerScreen() {
   };
 
   const takePicture = async () => {
-    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.6 });
+    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.5, base64: true });
     if (!photo?.uri) return;
     setPreviewUri(photo.uri);
+    setImageBase64(photo.base64 || undefined);
+    setImageMimeType('image/jpeg');
     setState('idle');
   };
 
   const pickImage = async () => {
     const response = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.6,
+      quality: 0.5,
+      base64: true,
     });
-    if (response.canceled || !response.assets[0]?.uri) return;
-    setPreviewUri(response.assets[0].uri);
+    const asset = response.canceled ? undefined : response.assets[0];
+    if (!asset?.uri) return;
+    setPreviewUri(asset.uri);
+    setImageBase64(asset.base64 || undefined);
+    setImageMimeType(getSupportedMimeType(asset.mimeType || undefined));
+  };
+
+  const handleCityChange = (value: string) => {
+    setCity(value);
+    setCoordinates(null);
   };
 
   const createScan = async () => {
     const trimmedWasteType = wasteType.trim();
     const trimmedCity = city.trim();
 
-    if (!trimmedWasteType || !trimmedCity) {
-      setErrorMessage('Informe o tipo de residuo e a cidade.');
+    if (!trimmedCity) {
+      setErrorMessage('Informe a cidade do descarte.');
+      return;
+    }
+
+    if (!trimmedWasteType && !imageBase64) {
+      setErrorMessage('Tire uma foto ou descreva o residuo.');
+      return;
+    }
+
+    if (previewUri && !imageBase64) {
+      setErrorMessage('Nao consegui preparar a imagem. Tire a foto novamente ou remova a foto para registrar por texto.');
       return;
     }
 
@@ -271,7 +339,13 @@ export function ScannerScreen() {
     setState('loading');
 
     try {
-      const scan = await scansApi.create({ wasteType: trimmedWasteType, city: trimmedCity });
+      const scan = await scansApi.create({
+        wasteType: trimmedWasteType || undefined,
+        city: trimmedCity,
+        lat: coordinates?.lat,
+        lng: coordinates?.lng,
+        image: imageBase64 ? { base64: imageBase64, mimeType: imageMimeType } : undefined,
+      });
       setResult(scan);
       await refreshUser();
       setState('result');
@@ -282,7 +356,7 @@ export function ScannerScreen() {
   };
 
   const reset = () => {
-    setPreviewUri(undefined);
+    clearImage();
     setWasteType('');
     setResult(null);
     setErrorMessage('');
@@ -333,7 +407,7 @@ export function ScannerScreen() {
       <View style={styles.idleTop}>
         <PulseButton onPress={openCamera} />
         <Text style={styles.idleHint}>Registre um descarte</Text>
-        <Text style={styles.idleSub}>Informe o tipo do residuo enquanto a IA real nao estiver ativa.</Text>
+        <Text style={styles.idleSub}>Tire uma foto ou descreva o residuo para a IA classificar o descarte.</Text>
 
         <View style={styles.mediaActions}>
           <Pressable style={styles.galleryBtn} onPress={pickImage}>
@@ -341,20 +415,22 @@ export function ScannerScreen() {
             <Text style={styles.galleryText}>Galeria</Text>
           </Pressable>
           {previewUri ? (
-            <Pressable style={styles.galleryBtn} onPress={() => setPreviewUri(undefined)}>
+            <Pressable style={styles.galleryBtn} onPress={clearImage}>
               <Feather name="trash-2" size={16} color={colors.muted} />
               <Text style={styles.galleryText}>Remover foto</Text>
             </Pressable>
           ) : null}
         </View>
+        {previewUri ? <Text style={styles.photoHint}>Foto anexada para analise visual</Text> : null}
       </View>
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Dados do descarte</Text>
+        <Text style={styles.formHint}>Com foto, o nome do residuo e opcional.</Text>
         <TextInput
           value={wasteType}
           onChangeText={setWasteType}
-          placeholder="Ex.: Garrafa PET"
+          placeholder="Opcional com foto. Ex.: Garrafa PET"
           placeholderTextColor={colors.muted}
           style={styles.input}
           autoCapitalize="sentences"
@@ -362,7 +438,7 @@ export function ScannerScreen() {
         <View style={styles.cityRow}>
           <TextInput
             value={city}
-            onChangeText={setCity}
+            onChangeText={handleCityChange}
             placeholder="Ex.: Campina Grande, PB"
             placeholderTextColor={colors.muted}
             style={[styles.input, styles.cityInput]}
@@ -372,7 +448,7 @@ export function ScannerScreen() {
             {detectingCity ? (
               <ActivityIndicator size="small" color={colors.green} />
             ) : (
-              <Feather name="map-pin" size={16} color={colors.green} />
+              <Feather name={coordinates ? 'check' : 'map-pin'} size={16} color={colors.green} />
             )}
           </Pressable>
         </View>
@@ -444,6 +520,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
+  photoHint: {
+    marginTop: 8,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    color: colors.green,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
   previewBg: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -466,6 +550,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+  },
+  formHint: {
+    marginTop: -4,
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 17,
   },
   input: {
     minHeight: 50,
@@ -647,6 +738,51 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface2,
+  },
+  sourceText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: colors.accent,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  infoChip: {
+    flex: 1,
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  infoLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 9,
+    color: colors.muted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    marginTop: 3,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.text,
+  },
   binRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   binIcon: {
     width: 40,
@@ -669,6 +805,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   cardInstr: { fontFamily: fonts.bodyLight, fontSize: 14, color: colors.text, lineHeight: 20 },
+  reasonText: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    color: colors.dim,
+    lineHeight: 18,
+  },
   ptsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ptsText: { fontFamily: fonts.display, fontSize: 32, color: colors.green, letterSpacing: 0.5 },
   recycleBadge: {

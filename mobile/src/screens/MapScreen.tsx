@@ -75,11 +75,30 @@ export function MapScreen() {
   const cardStyle = useAnimatedStyle(() => ({ transform: [{ translateY: cardY.value }] }));
   const bannerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: bannerY.value }] }));
 
-  const loadEcoPoints = useCallback(async (latitude: number, longitude: number) => {
+  const loadEcoPoints = useCallback(async (
+    latitude: number,
+    longitude: number,
+    options: { fallbackToSeed?: boolean } = {},
+  ) => {
     setLoading(true);
     setErrorMessage('');
     try {
       const points = await ecopointsApi.nearby(latitude, longitude, 5);
+
+      if (points.length === 0 && options.fallbackToSeed) {
+        const seededPoints = await ecopointsApi.nearby(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude, 15);
+        setEcoPoints(seededPoints);
+
+        if (seededPoints.length > 0) {
+          setErrorMessage('Nenhum ecoponto perto de voce. Mostrando pontos de teste em Campina Grande.');
+          mapRef.current?.animateToRegion(
+            { ...DEFAULT_COORDS, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+            800,
+          );
+          return;
+        }
+      }
+
       setEcoPoints(points);
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -102,7 +121,7 @@ export function MapScreen() {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       setUserLocation(coords);
-      await loadEcoPoints(coords.latitude, coords.longitude);
+      await loadEcoPoints(coords.latitude, coords.longitude, { fallbackToSeed: true });
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 1000);
 
       watcher = await Location.watchPositionAsync(
@@ -113,7 +132,7 @@ export function MapScreen() {
             longitude: position.coords.longitude,
           };
           setUserLocation(coordsFromWatcher);
-          loadEcoPoints(coordsFromWatcher.latitude, coordsFromWatcher.longitude);
+          loadEcoPoints(coordsFromWatcher.latitude, coordsFromWatcher.longitude, { fallbackToSeed: true });
         },
       );
     })();

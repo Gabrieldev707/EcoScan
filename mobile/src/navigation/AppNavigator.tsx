@@ -6,11 +6,13 @@ import { MapScreen } from '../screens/MapScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { CommunityScreen } from '../screens/CommunityScreen';
+import { EcoAlertScreen } from '../screens/EcoAlertScreen';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/fonts';
 
 export type AppTabParamList = {
   Scanner: undefined;
+  EcoAlerta: undefined;
   Mapa: undefined;
   Dashboard: undefined;
   Perfil: { name: string };
@@ -43,6 +45,7 @@ export function AppNavigator({ userName, onLogout }: { userName: string; onLogou
         tabBarIcon: ({ color, size }) => {
           const icons: Record<string, React.ComponentProps<typeof Feather>['name']> = {
             Scanner: 'camera',
+            EcoAlerta: 'alert-triangle',
             Mapa: 'map',
             Dashboard: 'bar-chart-2',
             Perfil: 'user',
@@ -53,6 +56,7 @@ export function AppNavigator({ userName, onLogout }: { userName: string; onLogou
       })}
     >
       <Tab.Screen name="Scanner" component={ScannerScreen} />
+      <Tab.Screen name="EcoAlerta" component={EcoAlertScreen} options={{ tabBarLabel: 'Alerta' }} />
       <Tab.Screen name="Mapa" component={MapScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Perfil" initialParams={{ name: userName }}>
