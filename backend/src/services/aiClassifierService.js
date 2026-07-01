@@ -1,5 +1,9 @@
 const fallbackClassifierService = require('./fallbackClassifierService');
-const { classificationResultSchema } = require('../schemas/classificationSchema');
+const {
+  BIN_COLOR_BY_CATEGORY,
+  CAN_RECYCLE_BY_CATEGORY,
+  classificationResultSchema,
+} = require('../schemas/classificationSchema');
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
@@ -19,7 +23,9 @@ function buildPrompt({ wasteType, city, lat, lng, image }) {
     '- Se o usuario nao informou wasteType, identifique o residuo diretamente pela imagem e preencha wasteType/identifiedItem.',
     '- Identifique o objeto real observado ou descrito em identifiedItem. Exemplos: saco de pipoca, papel higienico usado, garrafa PET, lata de aluminio.',
     '- Informe material de forma curta. Exemplos: plastico, papel contaminado, metal, vidro, organico, misto.',
-    '- Se o item/cidade forem inventados, sem sentido, impossiveis ou insuficientes para descarte, retorne isValidWaste=false, confidence baixo, points=0 e explique em reason.',
+    '- A cidade e apenas contexto; nao rejeite a classificacao por causa do nome da cidade.',
+    '- Se houver imagem e ela mostrar um objeto fisico descartavel ou residuo, classifique o melhor item observado mesmo com baixa confianca.',
+    '- Retorne isValidWaste=false somente se a imagem/descricao nao mostrar residuo, estiver ilegivel, for sem sentido ou for insuficiente para descarte.',
     '- Nao invente ecopontos, enderecos ou regras municipais especificas.',
     '- Para embalagem suja, guardanapo/papel higienico/fralda/esponja/bituca, normalmente e Rejeito/Cinza.',
     '',
@@ -72,6 +78,26 @@ function hasImage(input) {
   return Boolean(input.image?.base64);
 }
 
+function getProviderErrorSummary(error) {
+  if (error?.name === 'AbortError') return 'timeout';
+
+  if (Array.isArray(error?.errors)) {
+    return error.errors
+      .map((issue) => {
+        const path = Array.isArray(issue.path) && issue.path.length ? issue.path.join('.') : 'response';
+        return path + ': ' + issue.message;
+      })
+      .join('; ');
+  }
+
+  return error?.message || error?.name || 'unknown error';
+}
+
+function logProviderFailure(provider, error) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.warn('[ai] ' + provider + ' failed: ' + getProviderErrorSummary(error));
+}
+
 function buildTimeout(ms) {
   const timeoutMs = Number(ms || DEFAULT_TIMEOUT_MS);
   const controller = new AbortController();
@@ -83,8 +109,100 @@ function buildTimeout(ms) {
   };
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+  }
+
+  return '';
+}
+
+function getRejeitoCategory() {
+  return Object.keys(BIN_COLOR_BY_CATEGORY).find((category) => normalizeText(category) === 'rejeito') || 'Rejeito';
+}
+
+function coerceCategory(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+
+  return Object.keys(BIN_COLOR_BY_CATEGORY).find((category) => normalizeText(category) === normalized) || '';
+}
+
+function categoryFromBinColor(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+
+  return Object.entries(BIN_COLOR_BY_CATEGORY).find(([, binColor]) => normalizeText(binColor) === normalized)?.[0] || '';
+}
+
+function inferCategoryFromText(value) {
+  const normalized = normalizeText(value);
+
+  if (/vidro|garrafa de vidro|frasco|pote de conserva/.test(normalized)) return coerceCategory('Vidro');
+  if (/metal|lata|aluminio|aco|tampinha/.test(normalized)) return coerceCategory('Metal');
+  if (/papel|papelao|jornal|revista|caixa/.test(normalized)) return coerceCategory('Papel');
+  if (/organico|comida|resto|casca|folha|fruta/.test(normalized)) return coerceCategory('Orgânico');
+  if (/plastico|pet|sacola|embalagem|pote/.test(normalized)) return coerceCategory('Plástico');
+  if (/pipoca|papel higienico|guardanapo|fralda|esponja|bituca|sujo/.test(normalized)) return coerceCategory('Rejeito');
+
+  return '';
+}
+
+function toIntegerPoints(value, isValidWaste) {
+  if (!isValidWaste) return 0;
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 2;
+
+  return Math.max(0, Math.min(100, Math.round(number)));
+}
+
+function toConfidence(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0.45;
+  return Math.max(0, Math.min(1, number));
+}
+
+function sanitizeClassification(raw, input) {
+  const inputWasteType = input.wasteType?.trim();
+  const imageFallback = input.image?.base64 ? 'Residuo identificado pela imagem' : '';
+  const wasteType = firstText(raw?.wasteType, raw?.identifiedItem, inputWasteType, imageFallback, 'Residuo informado');
+  const identifiedItem = firstText(raw?.identifiedItem, raw?.wasteType, inputWasteType, imageFallback, wasteType);
+  const category =
+    coerceCategory(raw?.category) ||
+    categoryFromBinColor(raw?.binColor) ||
+    inferCategoryFromText([wasteType, identifiedItem, raw?.material, raw?.reason].filter(Boolean).join(' ')) ||
+    getRejeitoCategory();
+  const binColor = BIN_COLOR_BY_CATEGORY[category];
+  const isValidWaste = typeof raw?.isValidWaste === 'boolean' ? raw.isValidWaste : true;
+
+  return {
+    ...raw,
+    isValidWaste,
+    wasteType,
+    identifiedItem,
+    material: firstText(raw?.material, 'nao identificado'),
+    category,
+    binColor,
+    canRecycle: CAN_RECYCLE_BY_CATEGORY[category],
+    points: toIntegerPoints(raw?.points, isValidWaste),
+    disposalGuide: firstText(raw?.disposalGuide, 'Descarte como ' + category + ' na lixeira ' + binColor + '.'),
+    reason: firstText(raw?.reason, 'Classificacao normalizada pela IA.'),
+    confidence: toConfidence(raw?.confidence),
+  };
+}
+
 function validateClassification(raw, input, source) {
-  const validated = classificationResultSchema.parse(raw);
+  const sanitized = sanitizeClassification(raw, input);
+  const validated = classificationResultSchema.parse(sanitized);
   const inputWasteType = input.wasteType?.trim();
   const modelWasteType = validated.wasteType?.trim();
   const identifiedItem = validated.identifiedItem || modelWasteType || inputWasteType || 'Residuo identificado pela imagem';
@@ -202,7 +320,7 @@ async function classifyWithGemini(input) {
     });
 
     if (!response.ok) {
-      throw new Error('Gemini classification request failed');
+      throw new Error('Gemini classification request failed with HTTP ' + response.status);
     }
 
     const data = await response.json();
@@ -250,7 +368,7 @@ async function classifyWithGroq(input, { vision = false } = {}) {
     }
 
     if (!response.ok) {
-      throw new Error('Groq classification request failed');
+      throw new Error('Groq classification request failed with HTTP ' + response.status);
     }
 
     const data = await response.json();
@@ -267,19 +385,19 @@ function classifyWithGroqVision(input) {
 
 async function classifyWaste(input) {
   if (hasImage(input)) {
-    if (shouldUseGemini()) {
-      try {
-        return await classifyWithGemini(input);
-      } catch {
-        // Provider errors and raw model responses are intentionally not logged.
-      }
-    }
-
     if (shouldUseGroq()) {
       try {
         return await classifyWithGroqVision(input);
-      } catch {
-        // Provider errors and raw model responses are intentionally not logged.
+      } catch (error) {
+        logProviderFailure('groq vision classification', error);
+      }
+    }
+
+    if (shouldUseGemini()) {
+      try {
+        return await classifyWithGemini(input);
+      } catch (error) {
+        logProviderFailure('gemini image classification', error);
       }
     }
 
@@ -289,16 +407,16 @@ async function classifyWaste(input) {
   if (shouldUseGroq()) {
     try {
       return await classifyWithGroq(input);
-    } catch {
-      // Provider errors and raw model responses are intentionally not logged.
+    } catch (error) {
+      logProviderFailure('groq text classification', error);
     }
   }
 
   if (shouldUseGemini()) {
     try {
       return await classifyWithGemini(input);
-    } catch {
-      // Provider errors and raw model responses are intentionally not logged.
+    } catch (error) {
+      logProviderFailure('gemini text classification', error);
     }
   }
 

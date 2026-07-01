@@ -24,7 +24,7 @@ export interface Scan {
   points: number;
   disposalGuide: string;
   reason?: string;
-  classificationSource: 'gemini' | 'groq' | 'fallback';
+  classificationSource: 'gemini' | 'groq' | 'groq_vision' | 'fallback';
   confidence: number;
   city: string;
   lat?: number;

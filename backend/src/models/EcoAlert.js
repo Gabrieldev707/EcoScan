@@ -103,7 +103,7 @@ const ecoAlertSchema = new mongoose.Schema(
     },
     analysisSource: {
       type: String,
-      enum: ['gemini', 'fallback'],
+      enum: ['gemini', 'groq_vision', 'fallback'],
       required: true,
       default: 'fallback',
     },

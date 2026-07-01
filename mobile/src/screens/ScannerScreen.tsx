@@ -42,7 +42,8 @@ const BIN_HEX_BY_COLOR: Record<string, string> = {
 
 const CLASSIFIER_LABELS = {
   gemini: 'Gemini ativo',
-  groq: 'Groq ativo',
+  groq: 'Groq texto',
+  groq_vision: 'Groq Vision',
   fallback: 'Modo local',
 } as const;
 

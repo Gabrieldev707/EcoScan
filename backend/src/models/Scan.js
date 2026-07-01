@@ -56,7 +56,7 @@ const scanSchema = new mongoose.Schema(
     },
     classificationSource: {
       type: String,
-      enum: ['gemini', 'groq', 'fallback'],
+      enum: ['gemini', 'groq', 'groq_vision', 'fallback'],
       required: true,
       default: 'fallback',
     },
